@@ -1,6 +1,13 @@
-from fastapi import FastAPI
-from app.config import settings
 import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
+from app.config import settings
+from app.workspace import (
+    initialize_learning_documents,
+    load_agent_instructions,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,7 +22,29 @@ logger.info(
     settings.tz
 )
 
-app = FastAPI(title="English Study Agent")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    created_files = initialize_learning_documents(
+        settings.workspace_path
+    )
+
+    agent_instructions = load_agent_instructions(
+        settings.workspace_path
+    )
+
+    app.state.agent_instructions = agent_instructions
+
+    logger.info(
+        "Workspace initialized: created_files=%s",
+        created_files,
+    )
+
+    yield
+
+app = FastAPI(
+    title="English Study Agent",
+    lifespan=lifespan,
+)
 
 @app.get("/health")
 def health_check() -> dict[str, str]:

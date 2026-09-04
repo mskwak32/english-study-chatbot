@@ -17,4 +17,5 @@ Build a private English-study chatbot that runs locally on a Raspberry Pi 5.
 - Keep the LLM model and Ollama URL configurable through environment variables.
 - Add tests for security boundaries, persistence, and date-based chat behavior.
 - Update the phase status and verification notes in `plan.ai.md` after each phase.
+- Clear completed-phase items from `TODO.md`.
 - Do not silently decide items marked as user decisions.
