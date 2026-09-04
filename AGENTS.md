@@ -9,7 +9,7 @@ Build a private English-study chatbot that runs locally on a Raspberry Pi 5.
 - Read `plan.ai.md` before starting implementation.
 - Default to guidance and explanation; do not implement until the user explicitly asks.
 - Explain the purpose, relevant concepts, and expected result before each requested implementation.
-- When implementation is requested, change only the specific part requested so the user can code and learn incrementally.
+- Group related work into meaningful, testable tasks; avoid one-line increments unless a concept requires it.
 - Implement only the current phase agreed with the user.
 - Keep long-term study data under `workspace/` and chat data under `data/`.
 - Treat `workspace/AGENT.md` as runtime instructions for the English tutor.

@@ -1,6 +1,6 @@
-.DS_Store
-.venv/
 .pytest_cache/
 *.egg-info/
 __pycache__/
-.env
+*.pyc
+tests/
+.DS_Store

@@ -62,3 +62,19 @@ def test_settings_reject_non_sqlite_database_url(monkeypatch) -> None:
         match="DATABASE_URL must be an absolute SQLite URL"
     ):
         Settings()
+        
+def test_settings_read_dotenv_file(tmp_path, monkeypatch) -> None:
+    # 터미널 환경 변수가 .env보다 우선하는 영향 제거
+    monkeypatch.delenv("MODEL", raising=False)
+    monkeypatch.delenv("TZ", raising=False)
+    
+    dotenv_file = tmp_path / ".env"
+    dotenv_file.write_text(
+        "MODEL=dotenv-model\nTZ=UTC\n",
+        encoding="utf-8"
+    )
+    
+    settings = Settings(_env_file=dotenv_file)
+    
+    assert settings.model == "dotenv-model"
+    assert settings.tz == "UTC"
