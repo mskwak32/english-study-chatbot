@@ -10,27 +10,21 @@ from app.workspace import (
 )
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
 )
 
 logger = logging.getLogger(__name__)
 
 logger.info(
-    "Application configured: model=%s, timezone=%s",
-    settings.model,
-    settings.tz
+    "Application configured: model=%s, timezone=%s", settings.model, settings.tz
 )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    created_files = initialize_learning_documents(
-        settings.workspace_path
-    )
+    created_files = initialize_learning_documents(settings.workspace_path)
 
-    agent_instructions = load_agent_instructions(
-        settings.workspace_path
-    )
+    agent_instructions = load_agent_instructions(settings.workspace_path)
 
     app.state.agent_instructions = agent_instructions
 
@@ -41,11 +35,13 @@ async def lifespan(app: FastAPI):
 
     yield
 
+
 app = FastAPI(
     title="English Study Agent",
     lifespan=lifespan,
 )
 
+
 @app.get("/health")
 def health_check() -> dict[str, str]:
-    return {"status":"ok"}
+    return {"status": "ok"}
