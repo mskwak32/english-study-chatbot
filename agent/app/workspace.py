@@ -1,3 +1,5 @@
+"""학습 workspace 초기화와 안전한 파일 접근을 처리합니다."""
+
 import os
 import tempfile
 from pathlib import Path

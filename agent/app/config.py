@@ -1,7 +1,10 @@
+"""애플리케이션 환경 설정을 읽고 검증합니다."""
+
 from pathlib import Path
-from pydantic import field_validator
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

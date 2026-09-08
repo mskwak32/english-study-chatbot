@@ -1,19 +1,18 @@
 from pathlib import Path
 
 import pytest
-
 from app.workspace import (
     AGENT_INSTRUCTIONS_FILENAME,
-    TEMPLATE_FILENAMES,
-    WorkspaceInitializationError,
-    initialize_learning_documents,
-    load_agent_instructions,
-    list_files,
-    read_file,
-    append_file,
-    write_file,
     MAX_FILE_SIZE_BYTES,
+    TEMPLATE_FILENAMES,
     WorkspaceFileError,
+    WorkspaceInitializationError,
+    append_file,
+    initialize_learning_documents,
+    list_files,
+    load_agent_instructions,
+    read_file,
+    write_file,
 )
 
 

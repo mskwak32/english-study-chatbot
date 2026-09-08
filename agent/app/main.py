@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.config import settings
+from app.database import initialize_database
 from app.workspace import (
     initialize_learning_documents,
     load_agent_instructions,
@@ -22,6 +23,7 @@ logger.info(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    initialize_database(settings.database_url)
     created_files = initialize_learning_documents(settings.workspace_path)
 
     agent_instructions = load_agent_instructions(settings.workspace_path)
