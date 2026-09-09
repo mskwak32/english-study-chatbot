@@ -88,7 +88,15 @@ def test_initialize_database_is_idempotent_and_preserves_data(tmp_path: Path) ->
     finally:
         connection.close()
 
-    assert {"chats", "messages"} <= table_names
+    assert {
+        "chats",
+        "messages",
+        "learning_profiles",
+        "proficiency_tests",
+        "level_changes",
+        "review_words",
+        "study_records",
+    } <= table_names
     assert chat_titles == [("2026-09-07 영어 학습",)]
 
 

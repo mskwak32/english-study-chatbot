@@ -5,10 +5,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.database import initialize_database
-from app.workspace import (
-    initialize_learning_documents,
-    load_agent_instructions,
-)
+from app.workspace import load_agent_instructions, load_study_guidelines
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -24,16 +21,13 @@ logger.info(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     initialize_database(settings.database_url)
-    created_files = initialize_learning_documents(settings.workspace_path)
-
     agent_instructions = load_agent_instructions(settings.workspace_path)
+    study_guidelines = load_study_guidelines(settings.workspace_path)
 
     app.state.agent_instructions = agent_instructions
+    app.state.study_guidelines = study_guidelines
 
-    logger.info(
-        "Workspace initialized: created_files=%s",
-        created_files,
-    )
+    logger.info("Workspace runtime documents loaded")
 
     yield
 

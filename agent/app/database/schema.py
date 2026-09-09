@@ -56,7 +56,7 @@ def _create_migration_table(connection: sqlite3.Connection) -> None:
 
 
 def _create_initial_schema(connection: sqlite3.Connection) -> None:
-    """버전 1의 chats와 messages 스키마를 만듭니다."""
+    """버전 1의 채팅, 메시지, 학습 데이터 스키마를 만듭니다."""
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS chats (
@@ -105,6 +105,128 @@ def _create_initial_schema(connection: sqlite3.Connection) -> None:
         """
         CREATE INDEX IF NOT EXISTS messages_by_chat_sequence
         ON messages (chat_id, sequence)
+        """
+    )
+
+    # 현재 서비스는 단일 사용자이므로 프로필 ID는 1만 허용합니다.
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS learning_profiles (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            learner_name TEXT NOT NULL DEFAULT '',
+            target_language TEXT NOT NULL DEFAULT '영어',
+            learning_goals TEXT NOT NULL DEFAULT '',
+            session_started_on TEXT,
+            current_level TEXT CHECK (
+                current_level IS NULL
+                OR current_level IN ('A1', 'A2', 'B1', 'B2', 'C1', 'C2')
+            ),
+            level_updated_on TEXT,
+            level_note TEXT NOT NULL DEFAULT '',
+            strengths TEXT NOT NULL DEFAULT '',
+            weaknesses TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS proficiency_tests (
+            id INTEGER PRIMARY KEY,
+            profile_id INTEGER NOT NULL DEFAULT 1,
+            tested_on TEXT NOT NULL,
+            final_level TEXT NOT NULL CHECK (
+                final_level IN ('A1', 'A2', 'B1', 'B2', 'C1', 'C2')
+            ),
+            score_earned INTEGER NOT NULL CHECK (score_earned >= 0),
+            score_total INTEGER NOT NULL CHECK (score_total > 0),
+            vocabulary_result TEXT NOT NULL DEFAULT '',
+            grammar_result TEXT NOT NULL DEFAULT '',
+            reading_result TEXT NOT NULL DEFAULT '',
+            self_expression_result TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (profile_id)
+                REFERENCES learning_profiles (id)
+                ON DELETE CASCADE,
+            CHECK (score_earned <= score_total)
+        )
+        """
+    )
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS level_changes (
+            id INTEGER PRIMARY KEY,
+            profile_id INTEGER NOT NULL DEFAULT 1,
+            changed_on TEXT NOT NULL,
+            previous_level TEXT CHECK (
+                previous_level IS NULL
+                OR previous_level IN ('A1', 'A2', 'B1', 'B2', 'C1', 'C2')
+            ),
+            new_level TEXT NOT NULL CHECK (
+                new_level IN ('A1', 'A2', 'B1', 'B2', 'C1', 'C2')
+            ),
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (profile_id)
+                REFERENCES learning_profiles (id)
+                ON DELETE CASCADE
+        )
+        """
+    )
+
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS level_changes_by_date
+        ON level_changes (changed_on, id)
+        """
+    )
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS review_words (
+            id INTEGER PRIMARY KEY,
+            term TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            explanation TEXT NOT NULL,
+            last_wrong_on TEXT NOT NULL,
+            correct_streak INTEGER NOT NULL DEFAULT 0
+                CHECK (correct_streak >= 0),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS review_words_by_last_wrong_date
+        ON review_words (last_wrong_on, id)
+        """
+    )
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS study_records (
+            id INTEGER PRIMARY KEY,
+            chat_id INTEGER UNIQUE,
+            study_date TEXT NOT NULL,
+            topic TEXT NOT NULL,
+            new_words TEXT NOT NULL DEFAULT '',
+            expression TEXT NOT NULL DEFAULT '',
+            notes TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (chat_id)
+                REFERENCES chats (id)
+                ON DELETE SET NULL
+        )
+        """
+    )
+
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS study_records_by_date
+        ON study_records (study_date, id)
         """
     )
 

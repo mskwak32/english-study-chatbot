@@ -198,32 +198,6 @@ def test_delete_chat_returns_whether_a_chat_was_deleted(
     assert delete_chat(database_url, default_chat.id) is False
 
 
-def test_delete_chat_does_not_modify_workspace_files(tmp_path: Path) -> None:
-    database_path = tmp_path / "data" / "chat.db"
-    database_url = f"sqlite:///{database_path}"
-
-    workspace_path = tmp_path / "workspace"
-    workspace_path.mkdir()
-
-    study_history_path = workspace_path / "영어_학습이력.md"
-    original_content = "# 영어 학습 이력\n\n삭제하면 안 되는 학습 기록입니다.\n"
-    study_history_path.write_text(original_content, encoding="utf-8")
-
-    initialize_database(database_url)
-
-    chat = get_or_create_default_chat(
-        database_url,
-        date(2026, 9, 8),
-        datetime(2026, 9, 7, 15, 0, tzinfo=UTC),
-    )
-
-    deleted = delete_chat(database_url, chat.id)
-
-    assert deleted is True
-    assert get_chat(database_url, chat.id) is None
-    assert study_history_path.read_text(encoding="utf-8") == original_content
-
-
 def test_concurrent_default_chat_requests_return_one_chat(tmp_path: Path) -> None:
     database_path = tmp_path / "data" / "chat.db"
     database_url = f"sqlite:///{database_path}"

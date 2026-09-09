@@ -14,9 +14,10 @@ Build a private English-study chatbot that runs locally on a Raspberry Pi 5.
 - Add a concise module docstring to implementation modules; include one in new-file guidance. Exclude entry points and tests unless useful.
 - Group related work into meaningful, testable tasks; avoid one-line increments unless a concept requires it.
 - Implement only the current phase agreed with the user.
-- Keep long-term study data under `workspace/` and chat data under `data/`.
+- Keep structured learning and chat data in SQLite under `data/`.
+- Keep runtime tutor instructions and guidelines under `workspace/`.
 - Treat `workspace/AGENT.md` as runtime instructions for the English tutor.
-- Restrict application file tools to the configured workspace root.
+- Load only the fixed tutor instructions and study guidelines from `workspace/`.
 - Keep the LLM model and Ollama URL configurable through environment variables.
 - Add tests for security boundaries, persistence, and date-based chat behavior.
 - Update the phase status and verification notes in `plan.ai.md` after each phase.

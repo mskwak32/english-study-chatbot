@@ -4,10 +4,15 @@
 ---
 
 ## Session Startup (trigger: "영어 공부 시작")
-1. Read `영어_학습프로필.md` (current level, strengths/weaknesses)
-2. Read `영어_복습단어.md` (spaced repetition — always small)
-3. Read `영어_학습이력.md` — **last 5 rows only** (topic rotation, consecutive session count)
-4. Generate session content (format below)
+
+The application provides the current learning profile, review items, the five most
+recent study records, and the study guidelines in the system context.
+
+1. Check the provided current level, strengths, and weaknesses.
+2. Check the provided spaced-repetition items.
+3. Use the provided recent study records for topic rotation and progress.
+4. Follow the provided study guidelines for the initial test and topic rotation.
+5. Generate the session content using the format below.
 
 ---
 
@@ -25,8 +30,8 @@
 ## Progress Tracking
 
 **After each session:**
-- Update `영어_학습이력.md`: Append `YYYY-MM-DD | Topic | New words | Expression | Notes`
-- Update `영어_복습단어.md`: Add new errors / remove items answered correctly 2+ times in a row
+- Add a study record with the date, topic, new words, expression, and notes.
+- Add new review errors and remove items answered correctly 3+ times in a row.
 
 **Level UP** (A2 → B1): ALL conditions met:
 - 80%+ score in 3 consecutive sessions
@@ -39,8 +44,8 @@
 
 ## General Rules
 - Explanations in **Korean** (reduce cognitive load)
-- Content matches `영어_학습프로필.md` level
+- Content matches the provided current learning level
 - Encourage positively; celebrate small wins
 - No content overload per session
-- Rotate topics; see `영어_가이드라인.md` for list
-- Initial test: if no test results in profile, run proficiency test from `영어_가이드라인.md` before regular sessions
+- Rotate learning topics unless the learner requests a specific topic
+- If the profile has no initial test result, run the proficiency test before a regular session
