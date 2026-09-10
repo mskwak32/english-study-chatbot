@@ -8,8 +8,8 @@ Raspberry Pi 5에서 Docker Compose로 실행되며, PC와 휴대폰 브라우�
 - Python Agent가 프롬프트 구성, 학습 데이터 도구, 채팅 저장을 담당한다.
 - 채팅과 메시지는 SQLite에 저장한다.
 - 학습 프로필, 복습 단어, 학습 이력은 채팅과 함께 SQLite에 저장한다.
-- 영어 튜터 지침과 학습 가이드라인은 `workspace/`에 보존한다.
-- 애플리케이션은 `workspace/`의 고정 런타임 문서만 읽는다.
+- 영어 튜터 지침과 학습 가이드라인은 `instructions/`에 보존한다.
+- 애플리케이션은 `instructions/`의 고정 런타임 문서만 읽는다.
 
 ## 2. 목표 디렉터리 구조
 
@@ -22,14 +22,18 @@ english_study_ai/
 ├── .env.example              # 환경 변수 예시
 ├── .gitignore
 ├── docker-compose.yml
-├── agent/
+├── backend/                 # Python 백엔드 서비스 및 Docker 빌드 컨텍스트
 │   ├── Dockerfile
 │   ├── pyproject.toml
 │   ├── app/
 │   │   ├── main.py           # API 및 애플리케이션 진입점
 │   │   ├── config.py
+│   │   ├── instructions.py   # 고정 런타임 지침 로딩
 │   │   ├── study_time.py     # UTC 시각 변환과 사용자 기준 학습 날짜 계산
-│   │   ├── agent.py          # LLM 및 도구 실행 조정
+│   │   ├── agent/            # 구조화 응답 검증과 도구 호출 반복
+│   │   │   ├── __init__.py
+│   │   │   ├── protocol.py   # LLM 구조화 JSON 응답 검증
+│   │   │   └── runner.py     # LLM 요청과 도구 호출 반복 조정
 │   │   ├── llm/              # 교체 가능한 LLM 인터페이스와 구현체
 │   │   │   ├── __init__.py
 │   │   │   ├── client.py     # 공통 LLM 인터페이스와 오류
@@ -43,15 +47,15 @@ english_study_ai/
 │   │   │   ├── learning_profiles.py
 │   │   │   ├── review_words.py
 │   │   │   └── study_records.py
-│   │   ├── services/         # 여러 계층을 조합하는 애플리케이션 작업 흐름
-│   │   └── tools/            # LLM이 호출하는 학습 데이터 작업 인터페이스
+│   │   ├── services/         # API 요청용 채팅 생성과 프롬프트 준비 흐름
+│   │   └── llm_tools/        # LLM이 요청할 수 있는 학습 데이터 도구
 │   └── tests/
 ├── web/                      # 자체 Web UI
 ├── data/                     # SQLite 등 런타임 데이터
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   └── SECURITY.md
-└── workspace/
+└── instructions/
     ├── AGENT.md              # 영어 교사 LLM의 런타임 지침
     └── 영어_가이드라인.md    # 영어 학습 방식과 진행 기준
 ```
@@ -100,19 +104,19 @@ english_study_ai/
 
 ---
 
-### 2단계 — workspace 런타임 문서 로딩
+### 2단계 — 고정 런타임 지침 로딩
 
 **상태:** 완료 (2026-09-07)
 
 확정 정책:
 
-- `workspace/AGENT.md` 누락 또는 읽기 실패 시 애플리케이션 시작 실패
+- `instructions/AGENT.md` 누락 또는 읽기 실패 시 애플리케이션 시작 실패
 - 학습 가이드라인도 고정 런타임 문서로 읽는다.
 - 구조화된 학습 자료는 4단계부터 SQLite에 저장한다.
 
 구현 및 검증 결과:
 
-- `workspace/AGENT.md`와 `영어_가이드라인.md`의 고정 경로 로딩
+- `instructions/AGENT.md`와 `영어_가이드라인.md`의 고정 경로 로딩
 - 누락·빈 파일·UTF-8 오류·심볼릭 링크를 시작 오류로 처리
 - 4단계 DB 전환에서 범용 파일 도구와 학습 자료 템플릿 제거
 
@@ -140,7 +144,7 @@ english_study_ai/
 - `Asia/Seoul` 학습일 계산과 오늘의 기본 채팅 서비스 구현
 - 앱 시작 시 데이터베이스 스키마 초기화
 - 동시 기본 채팅·추가 채팅·메시지 요청의 중복 방지 검증
-- 채팅 삭제 시 연결 메시지만 cascade 삭제되고 workspace 자료는 유지됨을 검증
+- 채팅 삭제 시 연결된 메시지만 cascade 삭제됨을 검증
 - Ruff 포맷·린트 검사 통과
 - 전체 테스트: `55 passed` (사용자 확인)
 
@@ -154,14 +158,14 @@ english_study_ai/
 
 필요한 것:
 
-- Pi 환경에서 사용할 정확한 Ollama 모델 태그
-- 모델의 tool calling 지원 방식 확인
-- 네이티브 도구 호출 또는 구조화 JSON 프로토콜 선택
+- Raspberry Pi에서 `gemma3:4b`의 응답 시간과 메모리 사용량 측정
 
 확정 정책:
 
+- MVP의 기본 조합은 `gemma3:4b`와 구조화 JSON 프로토콜로 한다.
+- `gemma3:4b`가 네이티브 도구 호출을 지원하지 않으므로 JSON Schema로 행동과 인자를 제한하고 Python에서 다시 검증한다.
 - 같은 채팅의 전체 메시지를 매 요청에 전달하고 다른 채팅은 포함하지 않는다.
-- 튜터 지침과 학습 가이드라인은 workspace에서 읽는다.
+- 튜터 지침과 학습 가이드라인은 `instructions/`에서 읽는다.
 - 학습 프로필, 복습 단어, 최근 학습 이력 5개는 SQLite에서 읽는다.
 - 기존 Markdown 학습 기록은 가져오지 않고 빈 DB에서 새 학습자로 시작한다.
 - 임의의 메시지 개수 제한 대신 Ollama의 입력 토큰 수와 Pi 성능을 측정한 뒤 요약이나 제한 필요성을 판단한다.
@@ -172,7 +176,7 @@ english_study_ai/
 - 교체 가능한 LLM 어댑터 인터페이스
 - 학습 프로필, 실력 테스트, 레벨 변경, 복습 단어, 학습 이력의 SQLite 저장 계층
 - 런타임 지침, 최근 채팅, 필요한 학습 자료를 조합하는 프롬프트
-- 검증된 학습 데이터 도구 실행 루프
+- 구조화 JSON 응답을 검증하는 학습 데이터 도구 실행 루프
 - 모델 연결 및 도구 오류의 안전한 처리
 - 요청과 응답의 DB 저장
 
@@ -231,7 +235,7 @@ Agent와 Ollama를 분리하고 데이터를 영속화한다.
 
 - ARM64 호환 Agent 이미지
 - `agent`, `ollama` 서비스 구성
-- 모델, SQLite, workspace 영속 볼륨
+- 모델, SQLite, 런타임 지침 영속 볼륨
 - 비루트 컨테이너와 최소 권한
 - health check 및 재시작 정책
 - LAN 접속과 운영 문서
@@ -239,7 +243,7 @@ Agent와 Ollama를 분리하고 데이터를 영속화한다.
 완료 기준:
 
 - Pi에서 `docker compose up -d --build`로 실행됨
-- 컨테이너 재생성 후 DB, workspace, 모델이 유지됨
+- 컨테이너 재생성 후 DB, 런타임 지침, 모델이 유지됨
 - 휴대폰에서 접속 가능함
 - Docker 소켓이나 불필요한 호스트 경로가 노출되지 않음
 
@@ -253,7 +257,7 @@ MVP 전체 흐름을 검증하고 백업 및 장애 대응 방법을 문서화�
 
 필요한 것:
 
-- SQLite와 workspace 백업 위치 및 주기
+- SQLite와 런타임 지침 백업 위치 및 주기
 - 로그 보존 기간
 
 구현 항목:
@@ -266,7 +270,7 @@ MVP 전체 흐름을 검증하고 백업 및 장애 대응 방법을 문서화�
 완료 기준:
 
 - 주요 MVP 시나리오가 모두 통과함
-- 백업에서 DB와 workspace를 복구할 수 있음
+- 백업에서 DB와 런타임 지침을 복구할 수 있음
 - 운영자가 설치, 시작, 중지, 업데이트, 문제 확인을 문서만 보고 수행할 수 있음
 
 ## 4. MVP 이후 후보
@@ -282,16 +286,17 @@ MVP 완료 전에는 기본 범위에 포함하지 않는다.
 - 외부 공개 접속의 접근 제어, 접속 기록, 보안 점검
 - 다중 사용자 지원
 - Gemma와 다른 모델의 자동 벤치마크
+- Raspberry Pi 벤치마크 후 `qwen3.5:4b`와 네이티브 도구 호출로 선택적 전환
 - 학습 통계 및 시각화
 
 ## 5. Ruff 명령어
 
 ```bash
 # 포맷 검사 / 수정
-.venv/bin/python -m ruff format --check agent
-.venv/bin/python -m ruff format agent
+.venv/bin/python -m ruff format --check backend
+.venv/bin/python -m ruff format backend
 
 # 린트 검사 / 자동 수정
-.venv/bin/python -m ruff check agent
-.venv/bin/python -m ruff check --fix agent
+.venv/bin/python -m ruff check backend
+.venv/bin/python -m ruff check --fix backend
 ```

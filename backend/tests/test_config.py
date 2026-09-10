@@ -1,5 +1,5 @@
 import pytest
-from app.config import Settings
+from app.config import PROJECT_ROOT, Settings
 from pydantic import ValidationError
 
 
@@ -8,6 +8,7 @@ def test_settings_use_defaults() -> None:
 
     assert settings.model == "gemma3:4b"
     assert settings.ollama_base_url == "http://localhost:11434"
+    assert settings.instructions_path == PROJECT_ROOT / "instructions"
     assert settings.tz == "Asia/Seoul"
 
 
@@ -44,11 +45,11 @@ def test_settings_reject_invalid_timezone(monkeypatch) -> None:
         Settings()
 
 
-def test_settings_reject_relative_workspace_path(monkeypatch) -> None:
-    monkeypatch.setenv("WORKSPACE_PATH", "workspace")
+def test_settings_reject_relative_instructions_path(monkeypatch) -> None:
+    monkeypatch.setenv("INSTRUCTIONS_PATH", "instructions")
 
     with pytest.raises(
-        ValidationError, match="WORKSPACE_PATH must be an absolute path"
+        ValidationError, match="INSTRUCTIONS_PATH must be an absolute path"
     ):
         Settings()
 

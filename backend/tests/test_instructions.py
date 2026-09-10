@@ -2,10 +2,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from app.workspace import (
+from app.instructions import (
     AGENT_INSTRUCTIONS_FILENAME,
     STUDY_GUIDELINES_FILENAME,
-    WorkspaceInitializationError,
+    InstructionLoadingError,
     load_agent_instructions,
     load_study_guidelines,
 )
@@ -38,7 +38,7 @@ def test_rejects_missing_runtime_document(
     filename: str,
 ) -> None:
     with pytest.raises(
-        WorkspaceInitializationError,
+        InstructionLoadingError,
         match="필수 런타임 문서가 없습니다",
     ):
         loader(tmp_path)
@@ -53,7 +53,7 @@ def test_rejects_empty_runtime_document(
     (tmp_path / filename).write_text("   \n", encoding="utf-8")
 
     with pytest.raises(
-        WorkspaceInitializationError,
+        InstructionLoadingError,
         match="비어 있을 수 없습니다",
     ):
         loader(tmp_path)
@@ -66,11 +66,11 @@ def test_rejects_runtime_document_symlink(
     filename: str,
 ) -> None:
     outside_path = tmp_path.parent / f"outside-{filename}"
-    outside_path.write_text("workspace 밖의 내용", encoding="utf-8")
+    outside_path.write_text("external instructions", encoding="utf-8")
     (tmp_path / filename).symlink_to(outside_path)
 
     with pytest.raises(
-        WorkspaceInitializationError,
+        InstructionLoadingError,
         match="심볼릭 링크",
     ):
         loader(tmp_path)

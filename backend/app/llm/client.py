@@ -1,15 +1,24 @@
 """LLM 클라이언트가 따라야 할 공통 인터페이스를 정의합니다."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol, Literal
+from typing import Literal, Protocol
 
 
 @dataclass(frozen=True)
 class LLMMessage:
     """LLM에 전달하는 역할과 메시지 내용을 표현합니다."""
 
-    role: Literal["system","user","assistant"]
+    role: Literal["system", "user", "assistant"]
     content: str
+
+
+@dataclass(frozen=True)
+class LLMStructuredResponse:
+    """LLM이 JSON Schema에 맞춰 생성한 객체 응답을 표현합니다."""
+
+    content: dict[str, object]
+
 
 @dataclass(frozen=True)
 class LLMStatus:
@@ -45,4 +54,10 @@ class LLMClient(Protocol):
 
     async def aclose(self) -> None:
         """클라이언트가 사용하는 네트워크 자원을 정리합니다."""
+        ...
+
+    async def chat_structured(
+        self, messages: Sequence[LLMMessage], response_schema: dict[str, object]
+    ) -> LLMStructuredResponse:
+        """JSON Schema에 맞는 다음 대화 응답을 생성합니다."""
         ...

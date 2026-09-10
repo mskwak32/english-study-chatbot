@@ -126,9 +126,7 @@ def _build_reference_context(
     )
 
     if len(context) > REFERENCE_CONTEXT_CHARACTER_LIMIT:
-        raise PromptError(
-            "튜터 지침과 학습 자료가 프롬프트 크기 제한을 초과했습니다."
-        )
+        raise PromptError("튜터 지침과 학습 자료가 프롬프트 크기 제한을 초과했습니다.")
 
     return context
 

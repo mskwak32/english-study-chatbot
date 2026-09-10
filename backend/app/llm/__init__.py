@@ -7,6 +7,7 @@ from .client import (
     LLMMessage,
     LLMResponseError,
     LLMStatus,
+    LLMStructuredResponse,
     ModelUnavailableError,
 )
 from .ollama import OllamaClient
@@ -15,9 +16,10 @@ __all__ = [
     "LLMClient",
     "LLMConnectionError",
     "LLMError",
+    "LLMMessage",
     "LLMResponseError",
     "LLMStatus",
+    "LLMStructuredResponse",
     "ModelUnavailableError",
     "OllamaClient",
-    "LLMMessage",
 ]

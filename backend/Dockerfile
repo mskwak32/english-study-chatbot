@@ -1,6 +1,6 @@
 FROM python:3.13
 
-WORKDIR /app/agent
+WORKDIR /app
 
 COPY pyproject.toml requirements.lock ./
 COPY app ./app

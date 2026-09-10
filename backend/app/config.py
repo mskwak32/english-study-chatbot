@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     model: str = "gemma3:4b"
     ollama_base_url: str = "http://localhost:11434"
-    workspace_path: Path = PROJECT_ROOT / "workspace"
+    instructions_path: Path = PROJECT_ROOT / "instructions"
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'data' / 'chat.db'}"
     tz: str = "Asia/Seoul"
 
@@ -51,11 +51,11 @@ class Settings(BaseSettings):
 
         return value
 
-    @field_validator("workspace_path")
+    @field_validator("instructions_path")
     @classmethod
-    def validate_workspace_path(cls, value: Path) -> Path:
+    def validate_instructions_path(cls, value: Path) -> Path:
         if not value.is_absolute():
-            raise ValueError("WORKSPACE_PATH must be an absolute path")
+            raise ValueError("INSTRUCTIONS_PATH must be an absolute path")
 
         return value
 

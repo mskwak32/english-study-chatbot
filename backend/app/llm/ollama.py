@@ -1,5 +1,7 @@
 """Ollama HTTP API를 사용하는 LLM 클라이언트를 제공합니다."""
 
+import json
+from collections.abc import Sequence
 from types import TracebackType
 from typing import Self
 
@@ -9,6 +11,8 @@ from .client import (
     LLMConnectionError,
     LLMResponseError,
     LLMStatus,
+    LLMMessage,
+    LLMStructuredResponse,
     ModelUnavailableError,
 )
 
@@ -90,11 +94,58 @@ class OllamaClient:
             capabilities=tuple(capabilities),
         )
 
+    async def chat_structured(
+        self, messages: Sequence[LLMMessage], response_schema: dict[str, object]
+    ) -> LLMStructuredResponse:
+        """JSON Schema에 맞는 Ollama 대화 응답을 생성합니다."""
+        if not messages:
+            raise ValueError("LLM에 전달할 메시지는 하나 이상이어야 합니다.")
+
+        request_body: dict[str, object] = {
+            "model": self._model,
+            "messages": [
+                {
+                    "role": message.role,
+                    "content": message.content,
+                }
+                for message in messages
+            ],
+            # 스트리밍은 Web UI 단계 이후에 검토하므로 현재는 완성된 응답을 받음
+            "stream": False,
+            "format": response_schema,
+        }
+
+        response = await self._request("POST", "/api/chat", json_body=request_body)
+        self._raise_for_status(response, "Ollama 대화 생성")
+
+        response_data = self._read_json(response, "Ollama 대화 응답")
+        message_data = response_data.get("message")
+
+        if not isinstance(message_data, dict):
+            raise LLMResponseError("Ollama 대화 응답에 유효한 message 객체가 없습니다.")
+
+        content = message_data.get("content")
+
+        if not isinstance(content, str) or not content.strip():
+            raise LLMResponseError("Ollama 대화 응답에 유효한 content가 없습니다.")
+
+        try:
+            structured_content = json.loads(content)
+        except json.JSONDecodeError as error:
+            raise LLMResponseError(
+                "Ollama가 올바른 구조화 JSON을 반환하지 않았습니다."
+            ) from error
+
+        if not isinstance(structured_content, dict):
+            raise LLMResponseError("Ollama의 구조화 응답은 JSON 객체여야 합니다.")
+
+        return LLMStructuredResponse(content=structured_content)
+
     async def _request(
         self,
         method: str,
         path: str,
-        json_body: dict[str, str] | None = None,
+        json_body: dict[str, object] | None = None,
     ) -> httpx.Response:
         """네트워크 오류를 애플리케이션에서 사용하는 오류로 변환합니다."""
         try:
