@@ -185,6 +185,7 @@ def test_chat_structured_sends_schema_and_returns_json_object() -> None:
             ],
             "stream": False,
             "format": response_schema,
+            "keep_alive": "45m",
         }
 
         return httpx.Response(
@@ -205,6 +206,7 @@ def test_chat_structured_sends_schema_and_returns_json_object() -> None:
         async with OllamaClient(
             base_url="http://ollama.test",
             model="gemma3:4b",
+            keep_alive="45m",
             transport=transport,
         ) as client:
             return await client.chat_structured(

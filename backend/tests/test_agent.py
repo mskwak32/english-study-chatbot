@@ -138,9 +138,7 @@ def test_run_agent_executes_tool_and_requests_final_reply(
     second_request_messages = llm_client.calls[1][0]
 
     assert second_request_messages[-2].role == "assistant"
-    assert '"action": "save_review_word"' in (
-        second_request_messages[-2].content
-    )
+    assert '"action": "save_review_word"' in (second_request_messages[-2].content)
 
     assert second_request_messages[-1].role == "system"
     assert '"saved": true' in second_request_messages[-1].content

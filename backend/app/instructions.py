@@ -19,9 +19,7 @@ def _load_required_document(instructions_path: Path, filename: str) -> str:
         raise InstructionLoadingError(f"{filename}은 심볼릭 링크일 수 없습니다.")
 
     if not document_path.is_file():
-        raise InstructionLoadingError(
-            f"필수 런타임 문서가 없습니다: {document_path}"
-        )
+        raise InstructionLoadingError(f"필수 런타임 문서가 없습니다: {document_path}")
 
     try:
         content = document_path.read_text(encoding="utf-8")

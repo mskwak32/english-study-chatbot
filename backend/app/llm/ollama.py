@@ -9,9 +9,9 @@ import httpx
 
 from .client import (
     LLMConnectionError,
+    LLMMessage,
     LLMResponseError,
     LLMStatus,
-    LLMMessage,
     LLMStructuredResponse,
     ModelUnavailableError,
 )
@@ -25,9 +25,11 @@ class OllamaClient:
         base_url: str,
         model: str,
         timeout_seconds: float = 60.0,
+        keep_alive: str = "30m",
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self._model = model
+        self._keep_alive = keep_alive
 
         # AsyncClient를 재사용하면 요청마다 연결을 새로 만드는 비용을 줄일 수 있음
         self._client = httpx.AsyncClient(
@@ -113,6 +115,8 @@ class OllamaClient:
             # 스트리밍은 Web UI 단계 이후에 검토하므로 현재는 완성된 응답을 받음
             "stream": False,
             "format": response_schema,
+            # 유휴 시간이 짧은 학습 세션에서 모델 재로딩을 줄입니다.
+            "keep_alive": self._keep_alive,
         }
 
         response = await self._request("POST", "/api/chat", json_body=request_body)

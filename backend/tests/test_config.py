@@ -8,6 +8,7 @@ def test_settings_use_defaults() -> None:
 
     assert settings.model == "gemma3:4b"
     assert settings.ollama_base_url == "http://localhost:11434"
+    assert settings.ollama_keep_alive == "30m"
     assert settings.instructions_path == PROJECT_ROOT / "instructions"
     assert settings.tz == "Asia/Seoul"
 
@@ -15,11 +16,13 @@ def test_settings_use_defaults() -> None:
 def test_settings_read_environment(monkeypatch) -> None:
     monkeypatch.setenv("MODEL", "test-model")
     monkeypatch.setenv("TZ", "UTC")
+    monkeypatch.setenv("OLLAMA_KEEP_ALIVE", "45m")
 
     settings = Settings()
 
     assert settings.model == "test-model"
     assert settings.tz == "UTC"
+    assert settings.ollama_keep_alive == "45m"
 
 
 def test_settings_reject_empty_model(monkeypatch) -> None:
@@ -34,6 +37,16 @@ def test_settings_reject_invalid_ollama_base_url(monkeypatch) -> None:
 
     with pytest.raises(
         ValidationError, match="OLLAMA_BASE_URL must be a valid HTTP URL"
+    ):
+        Settings()
+
+
+def test_settings_reject_empty_ollama_keep_alive(monkeypatch) -> None:
+    monkeypatch.setenv("OLLAMA_KEEP_ALIVE", "  ")
+
+    with pytest.raises(
+        ValidationError,
+        match="OLLAMA_KEEP_ALIVE must not be empty",
     ):
         Settings()
 

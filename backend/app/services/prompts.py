@@ -17,7 +17,7 @@ from app.database import (
 from app.llm import LLMMessage
 
 REFERENCE_CONTEXT_CHARACTER_LIMIT = 12_000
-USER_INPUT_CHARACTER_LIMIT = 4_000
+USER_MESSAGE_CHARACTER_LIMIT = 4_000
 
 
 class PromptError(ValueError):
@@ -144,7 +144,7 @@ def build_chat_prompt(
     current_message = conversation_messages[-1]
     if current_message.role != "user":
         raise PromptError("현재 채팅의 마지막 메시지는 사용자 메시지여야 합니다.")
-    if len(current_message.content) > USER_INPUT_CHARACTER_LIMIT:
+    if len(current_message.content) > USER_MESSAGE_CHARACTER_LIMIT:
         raise PromptError("사용자 메시지는 4,000자를 초과할 수 없습니다.")
 
     prompt = [

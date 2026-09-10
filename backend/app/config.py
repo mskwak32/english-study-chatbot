@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     model: str = "gemma3:4b"
     ollama_base_url: str = "http://localhost:11434"
+    ollama_keep_alive: str = "30m"
     instructions_path: Path = PROJECT_ROOT / "instructions"
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'data' / 'chat.db'}"
     tz: str = "Asia/Seoul"
@@ -40,6 +41,16 @@ class Settings(BaseSettings):
             raise ValueError("OLLAMA_BASE_URL must be a valid HTTP URL")
 
         return value.rstrip("/")
+
+    @field_validator("ollama_keep_alive")
+    @classmethod
+    def validate_ollama_keep_alive(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("OLLAMA_KEEP_ALIVE must not be empty")
+
+        return value
 
     @field_validator("tz")
     @classmethod
