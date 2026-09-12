@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadInitialState } from "../api.js";
+import { loadInitialState, sendChatMessage } from "../api.js";
 
 test("오늘 채팅과 저장된 메시지를 초기 상태로 불러온다", async () => {
   const activeChat = {
@@ -57,4 +57,41 @@ test("오늘 채팅과 저장된 메시지를 초기 상태로 불러온다", as
     chats,
     messages,
   });
+});
+
+test("채팅 메시지를 same-origin API에 JSON으로 전송한다", async () => {
+  const assistantMessage = {
+    id: 12,
+    chat_id: 3,
+    role: "assistant",
+    content: "Hello!",
+    sequence: 2,
+    created_at: "2026-09-12T00:02:00+00:00",
+  };
+  let requestedPath;
+  let requestedOptions;
+
+  const fakeFetch = async (path, options) => {
+    requestedPath = path;
+    requestedOptions = options;
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => assistantMessage,
+    };
+  };
+
+  const result = await sendChatMessage(3, "Hello", fakeFetch);
+
+  assert.equal(requestedPath, "/chats/3/messages");
+  assert.deepEqual(requestedOptions, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content: "Hello" }),
+  });
+  assert.deepEqual(result, assistantMessage);
 });

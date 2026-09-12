@@ -1,7 +1,9 @@
-async function requestJson(fetchFunction, path) {
+async function requestJson(fetchFunction, path, options = {}) {
   const response = await fetchFunction(path, {
+    ...options,
     headers: {
       Accept: "application/json",
+      ...options.headers,
     },
   });
 
@@ -10,6 +12,20 @@ async function requestJson(fetchFunction, path) {
   }
 
   return response.json();
+}
+
+export function sendChatMessage(
+  chatId,
+  content,
+  fetchFunction = globalThis.fetch,
+) {
+  return requestJson(fetchFunction, `/chats/${chatId}/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content }),
+  });
 }
 
 export async function loadInitialState(fetchFunction = globalThis.fetch) {

@@ -41,6 +41,20 @@
         <p id="empty-message" class="empty-message" hidden>
           아직 대화가 없습니다.
         </p>
+
+        <form id="message-form" class="message-form">
+          <label class="visually-hidden" for="message-input">메시지</label>
+          <textarea
+            id="message-input"
+            name="content"
+            rows="3"
+            maxlength="4000"
+            placeholder="영어 학습 메시지를 입력하세요."
+            disabled
+            required
+          ></textarea>
+          <button id="send-button" type="submit" disabled>보내기</button>
+        </form>
       </main>
     </div>
 
