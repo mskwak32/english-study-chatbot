@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="개인용 영어 학습 채팅 화면" />
+    <title>영어 학습</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>영어 학습</h1>
+    </header>
+
+    <div class="app-layout">
+      <aside class="chat-sidebar" aria-labelledby="chat-list-title">
+        <h2 id="chat-list-title">학습 기록</h2>
+        <ol id="chat-list" class="chat-list"></ol>
+      </aside>
+
+      <main id="chat-panel" class="chat-panel" aria-busy="true">
+        <header class="chat-header">
+          <h2 id="chat-title">오늘의 학습</h2>
+        </header>
+
+        <p
+          id="loading-status"
+          class="status-message"
+          role="status"
+          aria-live="polite"
+        >
+          학습기록을 불러오는 중입니다.
+        </p>
+
+        <section
+          id="message-list"
+          class="message-list"
+          aria-label="채팅 메시지"
+        ></section>
+
+        <p id="empty-message" class="empty-message" hidden>
+          아직 대화가 없습니다.
+        </p>
+      </main>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,157 @@
+:root {
+  color-scheme: light;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #182230;
+  background: #f4f7fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 360px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  background: #f4f7fb;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  min-height: 4rem;
+  padding: 0 1.5rem;
+  color: #ffffff;
+  background: #173b67;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
+  min-height: calc(100vh - 4rem);
+  min-height: calc(100dvh - 4rem);
+}
+
+.chat-sidebar {
+  padding: 1.25rem;
+  border-right: 1px solid #d8e0ea;
+  background: #ffffff;
+}
+
+.chat-sidebar h2,
+.chat-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.chat-list {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 1rem 0 0;
+  list-style: none;
+}
+
+.chat-list-item {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  color: #405168;
+}
+
+.chat-list-item.is-active {
+  color: #173b67;
+  background: #e8f1fc;
+  font-weight: 600;
+}
+
+.chat-panel {
+  width: 100%;
+  padding: 1.5rem 2rem;
+}
+
+.chat-header {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #d8e0ea;
+}
+
+.status-message,
+.empty-message {
+  padding: 2rem 1rem;
+  margin: 0;
+  color: #65758b;
+  text-align: center;
+}
+
+.status-message.is-error {
+  color: #a12626;
+}
+
+.message-list {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem 0;
+}
+
+.message {
+  max-width: 42rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgb(24 34 48 / 8%);
+}
+
+.message.is-user {
+  margin-left: auto;
+  background: #dcecff;
+}
+
+.message-author {
+  margin: 0 0 0.4rem;
+  color: #405168;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.message-content {
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 47.99rem) {
+  .topbar {
+    padding: 0 1rem;
+  }
+
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-sidebar {
+    padding: 1rem;
+    border-right: 0;
+    border-bottom: 1px solid #d8e0ea;
+  }
+
+  .chat-panel {
+    padding: 1rem;
+  }
+}

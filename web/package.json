@@ -1,0 +1,8 @@
+{
+  "name": "english-study-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/api.test.js"
+  }
+}
