@@ -2,8 +2,9 @@ FROM python:3.13
 
 WORKDIR /app
 
-COPY pyproject.toml requirements.lock ./
-COPY app ./app
+COPY backend/pyproject.toml backend/requirements.lock ./
+COPY backend/app ./app
+COPY instructions /instructions
 
 RUN python -m pip install --no-cache-dir --constraint requirements.lock .
 

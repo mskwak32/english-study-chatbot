@@ -1,0 +1,10 @@
+.git/
+.venv/
+.env
+data/
+backend/tests/
+**/.pytest_cache/
+**/__pycache__/
+**/*.egg-info/
+**/*.pyc
+.DS_Store

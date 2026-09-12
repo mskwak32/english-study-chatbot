@@ -19,11 +19,11 @@ english_study_ai/
 ├── plan.ai.md                # 단계별 구현 계획과 진행 상태
 ├── README.md                 # 설치, 실행, 운영 방법
 ├── TODO.md                   # 현재 단계의 세부 작업 목록
+├── Dockerfile                # 프로젝트 루트 컨텍스트를 사용하는 이미지 빌드
 ├── .env.example              # 환경 변수 예시
 ├── .gitignore
 ├── docker-compose.yml
-├── backend/                 # Python 백엔드 서비스 및 Docker 빌드 컨텍스트
-│   ├── Dockerfile
+├── backend/                 # Python 백엔드 서비스
 │   ├── pyproject.toml
 │   ├── app/
 │   │   ├── main.py           # API 및 애플리케이션 진입점
@@ -59,6 +59,8 @@ english_study_ai/
     ├── AGENT.md              # 영어 교사 LLM의 런타임 지침
     └── 영어_가이드라인.md    # 영어 학습 방식과 진행 기준
 ```
+
+Docker 빌드 컨텍스트는 프로젝트 루트를 사용한다.
 
 아직 사용하지 않는 디렉터리와 파일은 해당 구현 단계에서 생성한다.
 
