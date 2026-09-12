@@ -1,4 +1,5 @@
 import pytest
+
 from app.agent.protocol import (
     AgentReply,
     AgentResponseError,

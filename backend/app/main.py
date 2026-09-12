@@ -16,7 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 logger.info(
-    "Application configured: model=%s, timezone=%s", settings.model, settings.tz
+    "Application configured: model=%s, timezone=%s", settings.model, settings.timezone
 )
 
 

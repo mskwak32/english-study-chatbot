@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     ollama_keep_alive: str = "30m"
     instructions_path: Path = PROJECT_ROOT / "instructions"
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'data' / 'chat.db'}"
-    tz: str = "Asia/Seoul"
+    timezone: str = "Asia/Seoul"
 
     @field_validator("model")
     @classmethod
@@ -52,13 +52,13 @@ class Settings(BaseSettings):
 
         return value
 
-    @field_validator("tz")
+    @field_validator("timezone")
     @classmethod
     def validate_timezone(cls, value: str) -> str:
         try:
             ZoneInfo(value)
         except ZoneInfoNotFoundError as error:
-            raise ValueError("TZ must be a valid IANA time zone") from error
+            raise ValueError("TIMEZONE must be a valid IANA time zone") from error
 
         return value
 

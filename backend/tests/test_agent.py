@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
+
 from app.agent import (
     AgentLoopError,
     run_agent,

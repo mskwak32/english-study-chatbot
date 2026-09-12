@@ -23,5 +23,6 @@ Build a private English-study chatbot that runs locally on a Raspberry Pi 5.
 - Add tests for security boundaries, persistence, and date-based chat behavior.
 - Update the phase status and verification notes in `plan.ai.md` after each phase.
 - Clear completed-phase items from `TODO.md`.
+- Do not run Ruff during incremental work; run Ruff with auto-fix once immediately before the phase commit.
 - Commit a completed phase after verification and documentation updates, before starting the next phase.
 - Do not silently decide items marked as user decisions.
