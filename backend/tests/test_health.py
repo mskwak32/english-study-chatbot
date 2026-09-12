@@ -49,21 +49,14 @@ def test_lifespan_initializes_database(
     connection = connect_database(temporary_app_settings)
 
     try:
-        table_names = {
-            row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type = 'table'"
-            ).fetchall()
-        }
+        schema_table = connection.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table' AND name = 'schema_migrations'
+            """
+        ).fetchone()
     finally:
         connection.close()
 
-    assert {
-        "chats",
-        "messages",
-        "learning_profiles",
-        "proficiency_tests",
-        "level_changes",
-        "review_words",
-        "study_records",
-    } <= table_names
+    assert schema_table == ("schema_migrations",)

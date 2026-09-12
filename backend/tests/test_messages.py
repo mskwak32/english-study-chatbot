@@ -122,23 +122,36 @@ def test_deleting_chat_cascades_to_its_messages(tmp_path: Path) -> None:
 
     initialize_database(database_url)
 
-    chat = get_or_create_default_chat(
+    deleted_chat = get_or_create_default_chat(
         database_url,
         date(2026, 9, 8),
         datetime(2026, 9, 7, 15, 0, tzinfo=UTC),
     )
+    preserved_chat = get_or_create_default_chat(
+        database_url,
+        date(2026, 9, 9),
+        datetime(2026, 9, 8, 15, 0, tzinfo=UTC),
+    )
     add_message(
         database_url,
-        chat.id,
+        deleted_chat.id,
         "user",
         "삭제될 메시지",
         datetime(2026, 9, 7, 15, 1, tzinfo=UTC),
     )
+    preserved_message = add_message(
+        database_url,
+        preserved_chat.id,
+        "assistant",
+        "유지될 메시지",
+        datetime(2026, 9, 8, 15, 1, tzinfo=UTC),
+    )
 
-    deleted = delete_chat(database_url, chat.id)
+    deleted = delete_chat(database_url, deleted_chat.id)
 
     assert deleted is True
-    assert list_messages(database_url, chat.id) == []
+    assert list_messages(database_url, deleted_chat.id) == []
+    assert list_messages(database_url, preserved_chat.id) == [preserved_message]
 
 
 def test_concurrent_message_requests_use_distinct_sequences(

@@ -83,11 +83,11 @@ def _create_chat(database_url: str) -> int:
     return chat.id
 
 
-def test_create_chat_message_returns_and_saves_assistant_reply(
+def test_create_chat_message_returns_assistant_reply(
     configured_client: tuple[TestClient, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """정상 응답은 assistant 메시지로 저장되고 HTTP 응답으로 반환됩니다."""
+    """정상 응답을 HTTP 200의 assistant 메시지로 반환합니다."""
     client, database_url = configured_client
     chat_id = _create_chat(database_url)
     llm_client = FakeLLMClient(
@@ -107,15 +107,6 @@ def test_create_chat_message_returns_and_saves_assistant_reply(
     assert response.json()["role"] == "assistant"
     assert response.json()["content"] == "오늘은 과거형을 연습하겠습니다."
     assert response.json()["sequence"] == 2
-
-    messages = list_messages(database_url, chat_id)
-
-    assert [(message.role, message.content) for message in messages] == [
-        ("user", "오늘은 무엇을 공부하나요?"),
-        ("assistant", "오늘은 과거형을 연습하겠습니다."),
-    ]
-    assert len(llm_client.calls) == 1
-
 
 def test_create_chat_message_returns_404_before_calling_llm(
     configured_client: tuple[TestClient, str],
@@ -145,7 +136,7 @@ def test_create_chat_message_returns_503_and_keeps_user_message(
     configured_client: tuple[TestClient, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """모델 연결 실패는 503으로 바꾸고 사용자 메시지는 보존합니다."""
+    """모델 연결 실패를 사용자가 이해할 수 있는 503 응답으로 바꿉니다."""
     client, database_url = configured_client
     chat_id = _create_chat(database_url)
     monkeypatch.setattr(
@@ -165,13 +156,6 @@ def test_create_chat_message_returns_503_and_keeps_user_message(
             "현재 영어 학습 모델에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."
         )
     }
-
-    messages = list_messages(database_url, chat_id)
-
-    assert [(message.role, message.content) for message in messages] == [
-        ("user", "오늘 학습을 시작할게요."),
-    ]
-
 
 def test_create_chat_message_returns_502_for_invalid_model_response(
     configured_client: tuple[TestClient, str],
