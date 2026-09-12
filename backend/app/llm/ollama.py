@@ -151,7 +151,7 @@ class OllamaClient:
         path: str,
         json_body: dict[str, object] | None = None,
     ) -> httpx.Response:
-        """네트워크 오류를 애플리케이션에서 사용하는 오류로 변환합니다."""
+        """네트워크 요청을 합니다."""
         try:
             return await self._client.request(method, path, json=json_body)
         except httpx.RequestError as error:
