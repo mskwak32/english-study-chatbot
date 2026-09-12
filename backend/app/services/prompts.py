@@ -137,7 +137,10 @@ def build_chat_prompt(
     study_guidelines: str,
     conversation_messages: Sequence[Message],
 ) -> list[LLMMessage]:
-    """학습 자료와 현재 채팅의 전체 메시지를 LLM 입력으로 만듭니다."""
+    """학습 자료 뒤에 전달받은 메시지를 순서 변경 없이 붙여 LLM 입력을 만듭니다.
+
+    호출자는 같은 채팅의 메시지를 DB 저장 순서로 전달해야 합니다.
+    """
     if not conversation_messages:
         raise PromptError("LLM에 전달할 사용자 메시지가 없습니다.")
 
@@ -158,7 +161,6 @@ def build_chat_prompt(
         )
     ]
 
-    # 같은 채팅의 전체 메시지를 DB의 저장 순서 그대로 전달합니다.
     prompt.extend(
         LLMMessage(
             role=_llm_role(message.role),

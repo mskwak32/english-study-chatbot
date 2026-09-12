@@ -62,6 +62,7 @@ class OllamaMemoryMonitor:
     """Ollama 프로세스의 RSS 메모리 사용량을 주기적으로 기록합니다."""
 
     def __init__(self, interval_seconds: float) -> None:
+        """RSS 샘플 간격을 설정하고 측정 상태를 초기화합니다."""
         self._interval_seconds = interval_seconds
         self._samples_mib: list[float] = []
         self._stop_event = threading.Event()
@@ -165,7 +166,10 @@ def benchmark_once(
     label: str,
     interval_seconds: float,
 ) -> BenchmarkResult:
-    """스트리밍 요청 한 번의 응답 시간과 메모리 사용량을 측정합니다."""
+    """첫 콘텐츠·전체 응답 시간과 수신 길이, RSS·스왑 사용량을 측정합니다.
+
+    스트리밍 요청에 ``format``은 전달하지만 최종 내용의 JSON Schema는 검증하지 않습니다.
+    """
     request_body = {
         "model": model,
         "stream": True,

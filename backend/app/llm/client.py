@@ -15,7 +15,10 @@ class LLMMessage:
 
 @dataclass(frozen=True)
 class LLMStructuredResponse:
-    """LLM이 JSON Schema에 맞춰 생성한 객체 응답을 표현합니다."""
+    """JSON Schema로 출력 형식을 요청해 받은 JSON 객체 응답을 표현합니다.
+
+    세부 스키마 검증은 Agent 호출자가 수행합니다.
+    """
 
     content: dict[str, object]
 
@@ -34,7 +37,7 @@ class LLMError(RuntimeError):
 
 
 class LLMConnectionError(LLMError):
-    """LLM 서버에 연결할 수 없을 때 발생합니다."""
+    """연결 실패나 시간 초과 등으로 LLM 서버 요청을 완료하지 못할 때 발생합니다."""
 
 
 class LLMResponseError(LLMError):
@@ -59,5 +62,8 @@ class LLMClient(Protocol):
     async def chat_structured(
         self, messages: Sequence[LLMMessage], response_schema: dict[str, object]
     ) -> LLMStructuredResponse:
-        """JSON Schema에 맞는 다음 대화 응답을 생성합니다."""
+        """JSON Schema로 출력 형식을 요청해 JSON 객체를 받습니다.
+
+        세부 스키마 검증은 Agent 호출자가 수행합니다.
+        """
         ...

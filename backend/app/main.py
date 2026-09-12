@@ -23,6 +23,10 @@ logger.info(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """시작 시 DB·지침·LLM 클라이언트를 준비하고 종료 시 클라이언트를 닫습니다.
+
+    Ollama의 준비 상태는 애플리케이션 시작 시 검사하지 않습니다.
+    """
     initialize_database(settings.database_url)
     agent_instructions = load_agent_instructions(settings.instructions_path)
     study_guidelines = load_study_guidelines(settings.instructions_path)
@@ -53,6 +57,7 @@ app.include_router(chat_router)
 
 @app.get("/health")
 def health_check() -> dict[str, str]:
+    """애플리케이션의 기본 상태를 반환합니다."""
     return {"status": "ok"}
 
 app.mount(

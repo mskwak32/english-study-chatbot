@@ -44,7 +44,11 @@ async def run_agent(
     current_time: datetime,
     max_tool_calls: int = 3,
 ) -> str:
-    """LLM과 도구를 반복 호출해 사용자에게 보낼 최종 답변을 만듭니다."""
+    """LLM과 도구를 반복 호출해 최종 답변을 만듭니다.
+
+    ``reply``는 즉시 반환합니다. ``save_review_word``는 SQLite에 저장한 뒤
+    LLM을 다시 호출하며, 호출 횟수는 ``max_tool_calls``로 제한합니다.
+    """
     if not messages:
         raise ValueError("Agent에 전달할 메시지는 하나 이상이어야 합니다.")
     if max_tool_calls <= 0:

@@ -27,16 +27,14 @@ class AgentReply(_StrictBaseModel):
     """사용자에게 바로 반환할 최종 답변입니다."""
 
     action: Literal["reply"]
-    message: (
-        Annotated[  # str이 실제 자료형. StringConstraints는 자료형에 붙이는 추가 정보
-            str,
-            StringConstraints(  # 문자열에 적용할 규칙
-                strip_whitespace=True,  # 모든 문자열 양쪽 공백 제거
-                min_length=1,
-                max_length=8_000,
-            ),
-        ]
-    )
+    message: Annotated[
+        str,
+        StringConstraints(
+            strip_whitespace=True,
+            min_length=1,
+            max_length=8_000,
+        ),
+    ]
 
 
 class SaveReviewWordArguments(_StrictBaseModel):
@@ -67,11 +65,10 @@ class SaveReviewWordToolCall(_StrictBaseModel):
     arguments: SaveReviewWordArguments
 
 
-# LLM은 최종 답변 또는 복습 단어 저장 요청 중 하나를 반환할 수 있음.
-# action 필드를 기준으로 사용할 Pydantic 모델을 선택합니다.
+# action 값에 따라 최종 답변과 복습 단어 저장 요청 중 검증할 모델을 선택합니다.
 AgentResponse = Annotated[
-    AgentReply | SaveReviewWordToolCall,  # 실제 자료형
-    Field(discriminator="action"),  # 추가 정보
+    AgentReply | SaveReviewWordToolCall,
+    Field(discriminator="action"),
 ]
 
 _AGENT_RESPONSE_ADAPTER = TypeAdapter(AgentResponse)

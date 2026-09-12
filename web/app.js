@@ -13,6 +13,13 @@ const sendButton = document.querySelector("#send-button");
 
 let activeChatId = null;
 
+/**
+ * 채팅 목록에 표시할 항목을 만들고 현재 선택 상태를 반영합니다.
+ *
+ * @param {{id: number, title: string}} chat 표시할 채팅입니다.
+ * @param {number} activeChatId 현재 선택된 채팅 식별자입니다.
+ * @returns {HTMLLIElement} 채팅 목록 항목입니다.
+ */
 function createChatListItem(chat, activeChatId) {
   const item = document.createElement("li");
 
@@ -27,6 +34,12 @@ function createChatListItem(chat, activeChatId) {
   return item;
 }
 
+/**
+ * 저장된 메시지를 안전한 텍스트 DOM 요소로 만듭니다.
+ *
+ * @param {{role: string, content: string}} message 표시할 메시지입니다.
+ * @returns {HTMLElement} 메시지 요소입니다.
+ */
 function createMessageElement(message) {
   const article = document.createElement("article");
   const author = document.createElement("p");
@@ -49,6 +62,11 @@ function createMessageElement(message) {
   return article;
 }
 
+/**
+ * 초기 API 상태를 화면과 현재 채팅 상태에 반영합니다.
+ *
+ * @param {{activeChat: object, chats: object[], messages: object[]}} state 초기 화면 상태입니다.
+ */
 function renderInitialState({ activeChat, chats, messages }) {
   activeChatId = activeChat.id;
   chatTitle.textContent = activeChat.title;
@@ -64,11 +82,21 @@ function renderInitialState({ activeChat, chats, messages }) {
   chatPanel.setAttribute("aria-busy", "false");
 }
 
+/**
+ * 새 메시지 하나를 대화 영역에 추가합니다.
+ *
+ * @param {{role: string, content: string}} message 표시할 메시지입니다.
+ */
 function appendMessage(message) {
   messageList.append(createMessageElement(message));
   emptyMessage.hidden = true;
 }
 
+/**
+ * 메시지 전송 대기 상태에 맞춰 입력 폼과 로딩 안내를 갱신합니다.
+ *
+ * @param {boolean} isPending 전송 대기 여부입니다.
+ */
 function setMessageFormPending(isPending) {
   messageInput.disabled = isPending;
   sendButton.disabled = isPending;
@@ -93,7 +121,7 @@ const messageFlow = createMessageFlow({
   onError: (error) => {
     console.error(error);
     loadingStatus.textContent =
-      "메시지를 보내지 못했습니다. 잠시 후 다시 시도해 주세요.";
+      "답변을 받지 못했습니다. 보낸 메시지는 학습 기록에 저장되었을 수 있으니 확인한 뒤 다시 시도해 주세요.";
     loadingStatus.classList.add("is-error");
     loadingStatus.hidden = false;
   },
@@ -114,6 +142,9 @@ messageForm.addEventListener("submit", async (event) => {
   messageInput.focus();
 });
 
+/**
+ * 초기 채팅 상태를 불러온 뒤 메시지 입력을 사용할 수 있게 합니다.
+ */
 async function startApplication() {
   try {
     const initialState = await loadInitialState();

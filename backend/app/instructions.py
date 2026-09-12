@@ -14,7 +14,7 @@ def _load_required_document(instructions_path: Path, filename: str) -> str:
     """필수 UTF-8 지침 문서를 읽고 비어 있지 않은지 확인합니다."""
     document_path = instructions_path.resolve() / filename
 
-    # 저장소 밖의 다른 파일을 지침으로 읽는 상황을 허용하지 않습니다.
+    # 지정 디렉터리의 고정 파일명만 읽고, 최종 파일의 심볼릭 링크는 거부합니다.
     if document_path.is_symlink():
         raise InstructionLoadingError(f"{filename}은 심볼릭 링크일 수 없습니다.")
 

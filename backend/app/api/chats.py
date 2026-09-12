@@ -1,4 +1,4 @@
-"""채팅 관리와 메시지 요청을 HTTP API를 제공합니다."""
+"""채팅 관리와 메시지 처리를 위한 HTTP API를 제공합니다."""
 
 import logging
 from datetime import date, datetime
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chats", tags=["chats"])
 
 class ChatResponse(BaseModel):
-    """채팅방 정보"""
+    """저장된 채팅 한 건의 메타데이터를 반환하는 API 응답입니다."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -47,7 +47,7 @@ class ChatResponse(BaseModel):
     created_at: datetime
 
 class MessageResponse(BaseModel):
-    """채팅의 메시지"""
+    """저장된 채팅 메시지 한 건을 반환하는 API 응답입니다."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -161,7 +161,7 @@ def read_chat_messages(chat_id: int) -> list[MessageResponse]:
     status_code=status.HTTP_204_NO_CONTENT
 )
 def remove_chat(chat_id: int) -> Response:
-    """지정한 채팅과 연결된 메시지를 삭제합니다."""
+    """채팅과 메시지를 삭제하고 연결된 학습 기록의 채팅 참조만 비웁니다."""
     try:
         deleted = delete_chat(settings.database_url, chat_id)
     except DatabaseError as error:

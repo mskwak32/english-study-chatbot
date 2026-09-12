@@ -24,7 +24,7 @@ def database_path_from_url(database_url: str) -> Path:
 
 
 def connect_database(database_url: str) -> sqlite3.Connection:
-    """SQLite DB에 연결하고 외래 키 제약을 활성화합니다."""
+    """DB 상위 디렉터리를 필요하면 만든 뒤 SQLite에 연결하고 외래 키를 활성화합니다."""
     database_path = database_path_from_url(database_url)
     database_path.parent.mkdir(parents=True, exist_ok=True)
 

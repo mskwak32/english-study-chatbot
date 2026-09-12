@@ -1,4 +1,4 @@
-"""날짜 기반 학습 채팅의 저장과 조회를 처리합니다."""
+"""날짜 기반 학습 채팅을 저장하고 조회합니다."""
 
 import sqlite3
 from dataclasses import dataclass
@@ -122,7 +122,7 @@ def _next_extra_number(connection: sqlite3.Connection, study_date: date) -> int:
 def create_additional_chat(
     database_url: str, study_date: date, created_at: datetime
 ) -> Chat:
-    """지정한 날짜에 추가 학습 채팅을 생성합니다."""
+    """가장 작은 빈 번호로 추가 채팅을 만들고 번호 선택과 저장을 직렬화합니다."""
     created_at_utc = to_utc(created_at)
     connection = connect_database(database_url)
 

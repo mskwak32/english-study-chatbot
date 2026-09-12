@@ -25,7 +25,10 @@ async def respond_to_chat(
     timezone_name: str,
     now: datetime | None = None,
 ) -> Message:
-    """사용자 메시지에 대한 assistant 응답을 생성하고 저장합니다."""
+    """사용자 메시지를 먼저 저장한 뒤 assistant 응답을 생성하고 저장합니다.
+
+    응답 생성이나 저장이 실패해도 먼저 저장한 사용자 메시지는 남습니다.
+    """
     if len(user_content) > USER_MESSAGE_CHARACTER_LIMIT:
         raise ConversationError(
             f"사용자 메시지는 {USER_MESSAGE_CHARACTER_LIMIT:,}자를 초과할 수 없습니다."

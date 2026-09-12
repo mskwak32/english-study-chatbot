@@ -132,7 +132,7 @@ def test_create_chat_message_returns_404_before_calling_llm(
     assert llm_client.calls == []
 
 
-def test_create_chat_message_returns_503_and_keeps_user_message(
+def test_create_chat_message_returns_503_for_model_connection_error(
     configured_client: tuple[TestClient, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

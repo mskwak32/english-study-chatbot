@@ -28,6 +28,11 @@ class OllamaClient:
         keep_alive: str = "30m",
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
+        """Ollama 클라이언트를 초기화합니다.
+
+        ``timeout_seconds``는 HTTP 요청 하나의 제한 시간이고, ``keep_alive``는
+        모델 상주 시간입니다. 둘 다 전체 Agent 처리 시간과는 다릅니다.
+        """
         self._model = model
         self._keep_alive = keep_alive
 
@@ -99,7 +104,10 @@ class OllamaClient:
     async def chat_structured(
         self, messages: Sequence[LLMMessage], response_schema: dict[str, object]
     ) -> LLMStructuredResponse:
-        """JSON Schema에 맞는 Ollama 대화 응답을 생성합니다."""
+        """Schema를 ``format``으로 전달하고 JSON 객체로 파싱해 반환합니다.
+
+        세부 스키마 검증은 Agent 단계에서 수행합니다.
+        """
         if not messages:
             raise ValueError("LLM에 전달할 메시지는 하나 이상이어야 합니다.")
 
@@ -112,7 +120,7 @@ class OllamaClient:
                 }
                 for message in messages
             ],
-            # 스트리밍은 Web UI 단계 이후에 검토하므로 현재는 완성된 응답을 받음
+            # MVP에서는 Agent가 완성된 구조화 응답을 검증한 뒤 반환하므로 스트리밍을 사용하지 않습니다.
             "stream": False,
             "format": response_schema,
             # 유휴 시간이 짧은 학습 세션에서 모델 재로딩을 줄입니다.
@@ -151,7 +159,7 @@ class OllamaClient:
         path: str,
         json_body: dict[str, object] | None = None,
     ) -> httpx.Response:
-        """네트워크 요청을 합니다."""
+        """Ollama API를 요청하고 RequestError를 LLMConnectionError로 변환합니다."""
         try:
             return await self._client.request(method, path, json=json_body)
         except httpx.RequestError as error:

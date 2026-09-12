@@ -22,7 +22,10 @@ def execute_save_review_word(
     study_date: date,
     current_time: datetime,
 ) -> ToolResult:
-    """검증된 save_review_word 도구 호출을 실행합니다."""
+    """검증된 save_review_word 도구 호출을 SQLite에 저장합니다.
+
+    날짜와 시각은 앱이 결정하며, 저장할 ``correct_streak``은 0으로 설정합니다.
+    """
     review_word = save_review_word(
         database_url,
         term=tool_call.arguments.term,
