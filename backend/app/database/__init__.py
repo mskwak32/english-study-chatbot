@@ -6,6 +6,7 @@ from .chats import (
     create_additional_chat,
     delete_chat,
     get_chat,
+    get_default_chat,
     get_or_create_default_chat,
     list_chats,
 )
@@ -62,6 +63,7 @@ __all__ = [
     "delete_chat",
     "delete_review_word",
     "get_chat",
+    "get_default_chat",
     "get_learning_profile",
     "get_or_create_default_chat",
     "initialize_database",

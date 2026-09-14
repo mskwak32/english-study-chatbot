@@ -7,7 +7,11 @@ import {
   loadChatMessages,
   loadChats,
   loadInitialState,
+  loadLearningProfile,
+  loadReviewWords,
+  loadStudyRecords,
   sendChatMessage,
+  startTodayChat,
 } from "../api.js";
 
 test("오늘 채팅과 저장된 메시지를 초기 상태로 불러온다", async () => {
@@ -66,6 +70,25 @@ test("오늘 채팅과 저장된 메시지를 초기 상태로 불러온다", as
   });
 });
 
+test("오늘 기본 학습이 없으면 메시지를 요청하지 않고 빈 초기 상태를 반환한다", async () => {
+  const requestedPaths = [];
+  const chats = [];
+  const fakeFetch = async (path) => {
+    requestedPaths.push(path);
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => (path === "/chats/today" ? null : chats),
+    };
+  };
+
+  const result = await loadInitialState(fakeFetch);
+
+  assert.deepEqual(requestedPaths, ["/chats/today", "/chats"]);
+  assert.deepEqual(result, { activeChat: null, chats, messages: [] });
+});
+
 test("채팅 메시지를 same-origin API에 JSON으로 전송한다", async () => {
   const assistantMessage = {
     id: 12,
@@ -116,6 +139,7 @@ test("채팅 관리 API는 same-origin 경로와 HTTP 메서드를 사용한다"
   };
 
   await loadChatMessages(7, fakeFetch);
+  await startTodayChat(fakeFetch);
   await createAdditionalChat(fakeFetch);
   await deleteChat(7, fakeFetch);
   await loadChats(fakeFetch);
@@ -124,6 +148,10 @@ test("채팅 관리 API는 same-origin 경로와 HTTP 메서드를 사용한다"
     {
       path: "/chats/7/messages",
       options: { headers: { Accept: "application/json" } },
+    },
+    {
+      path: "/chats/today",
+      options: { method: "POST", headers: { Accept: "application/json" } },
     },
     {
       path: "/chats/additional",
@@ -135,6 +163,38 @@ test("채팅 관리 API는 same-origin 경로와 HTTP 메서드를 사용한다"
     },
     {
       path: "/chats",
+      options: { headers: { Accept: "application/json" } },
+    },
+  ]);
+});
+
+test("학습 정보 API는 same-origin GET 경로를 사용한다", async () => {
+  const requests = [];
+  const fakeFetch = async (path, options) => {
+    requests.push({ path, options });
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => [],
+    };
+  };
+
+  await loadLearningProfile(fakeFetch);
+  await loadStudyRecords(fakeFetch);
+  await loadReviewWords(fakeFetch);
+
+  assert.deepEqual(requests, [
+    {
+      path: "/learning/profile",
+      options: { headers: { Accept: "application/json" } },
+    },
+    {
+      path: "/learning/study-records",
+      options: { headers: { Accept: "application/json" } },
+    },
+    {
+      path: "/learning/review-words",
       options: { headers: { Accept: "application/json" } },
     },
   ]);

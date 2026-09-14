@@ -10,6 +10,17 @@
   <body>
     <header class="topbar">
       <h1>영어 학습</h1>
+      <a
+        class="learning-info-link"
+        href="/learning.html"
+        aria-label="학습 정보 보기"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 10v6" />
+          <path d="M12 7h.01" />
+        </svg>
+      </a>
     </header>
 
     <div class="app-layout">
@@ -23,43 +34,66 @@
         <ol id="chat-list" class="chat-list"></ol>
       </aside>
 
-      <main id="chat-panel" class="chat-panel" aria-busy="true">
-        <header class="chat-header">
-          <h2 id="chat-title">오늘의 학습</h2>
-        </header>
-
-        <p
-          id="loading-status"
-          class="status-message"
-          role="status"
-          aria-live="polite"
-        >
-          학습 기록을 불러오는 중입니다.
-        </p>
-
+      <main id="main-content" class="main-content" aria-busy="true">
         <section
-          id="message-list"
-          class="message-list"
-          aria-label="채팅 메시지"
-        ></section>
+          id="start-learning"
+          class="start-learning"
+          aria-labelledby="start-learning-title"
+          hidden
+        >
+          <h3 id="start-learning-title">오늘의 학습을 아직 시작하지 않았습니다.</h3>
+          <p>버튼을 눌러 오늘의 기본 학습을 시작해 주세요.</p>
+          <button id="start-learning-button" type="button">
+            오늘의 학습 시작
+          </button>
+          <p
+            id="start-learning-status"
+            class="status-message"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></p>
+        </section>
 
-        <p id="empty-message" class="empty-message" hidden>
-          아직 대화가 없습니다.
-        </p>
+        <section id="chat-panel" class="chat-panel">
+          <header class="chat-header">
+            <h2 id="chat-title">오늘의 학습</h2>
+          </header>
 
-        <form id="message-form" class="message-form">
-          <label class="visually-hidden" for="message-input">메시지</label>
-          <textarea
-            id="message-input"
-            name="content"
-            rows="3"
-            maxlength="4000"
-            placeholder="영어 학습 메시지를 입력하세요."
-            disabled
-            required
-          ></textarea>
-          <button id="send-button" type="submit" disabled>보내기</button>
-        </form>
+          <p
+            id="loading-status"
+            class="status-message"
+            role="status"
+            aria-live="polite"
+          >
+            학습 기록을 불러오는 중입니다.
+          </p>
+
+          <section
+            id="message-list"
+            class="message-list"
+            aria-label="채팅 메시지"
+          ></section>
+
+          <p id="empty-message" class="empty-message" hidden>
+            아직 대화가 없습니다.
+          </p>
+
+          <form id="message-form" class="message-form">
+            <label class="visually-hidden" for="message-input">메시지</label>
+            <textarea
+              id="message-input"
+              name="content"
+              rows="3"
+              maxlength="4000"
+              placeholder="영어 학습 메시지를 입력하세요."
+              enterkeyhint="send"
+              disabled
+              required
+            ></textarea>
+            <button id="send-button" type="submit" disabled>보내기</button>
+          </form>
+        </section>
       </main>
     </div>
 

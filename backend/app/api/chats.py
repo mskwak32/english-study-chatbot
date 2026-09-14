@@ -26,6 +26,7 @@ from app.services import (
     PromptError,
     create_today_additional_chat,
     get_or_create_today_chat,
+    get_today_chat,
     respond_to_chat,
 )
 from app.services.prompts import USER_MESSAGE_CHARACTER_LIMIT
@@ -70,21 +71,46 @@ class ChatMessageRequest(BaseModel):
 
 @router.get(
     "/today",
-    response_model=ChatResponse,
-    status_code=status.HTTP_200_OK
+    response_model=ChatResponse | None,
+    status_code=status.HTTP_200_OK,
 )
-def read_today_chat() -> ChatResponse:
-    """오늘의 기본 학습 채팅을 조회하거나 생성합니다."""
+def read_today_chat() -> ChatResponse | None:
+    """오늘의 기본 학습 채팅을 생성하지 않고 조회합니다."""
+    try:
+        chat = get_today_chat(
+            settings.database_url,
+            settings.timezone,
+        )
+    except (ChatError, DatabaseError) as error:
+        logger.exception("오늘의 학습 채팅을 불러오지 못했습니다.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="오늘의 학습 채팅을 불러오지 못했습니다.",
+        ) from error
+
+    if chat is None:
+        return None
+
+    return ChatResponse.model_validate(chat)
+
+
+@router.post(
+    "/today",
+    response_model=ChatResponse,
+    status_code=status.HTTP_200_OK,
+)
+def create_today_chat() -> ChatResponse:
+    """오늘의 기본 학습 채팅을 생성하거나 기존 채팅을 반환합니다."""
     try:
         chat = get_or_create_today_chat(
             settings.database_url,
-            settings.timezone
+            settings.timezone,
         )
     except (ChatError, DatabaseError) as error:
         logger.exception("오늘의 학습 채팅을 준비하지 못했습니다.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="오늘의 학습 채팅을 준비하지 못했습니다."
+            detail="오늘의 학습 채팅을 준비하지 못했습니다.",
         ) from error
 
     return ChatResponse.model_validate(chat)

@@ -5,10 +5,15 @@ import {
   loadChats,
   loadInitialState,
   sendChatMessage,
+  startTodayChat,
 } from "/api.js";
 import { deleteConfirmedChat } from "/chat-management.js";
-import { createMessageFlow } from "/message-flow.js";
+import {
+  createMessageFlow,
+  shouldSubmitMessageShortcut,
+} from "/message-flow.js";
 
+const mainContent = document.querySelector("#main-content");
 const chatPanel = document.querySelector("#chat-panel");
 const chatTitle = document.querySelector("#chat-title");
 const chatList = document.querySelector("#chat-list");
@@ -16,12 +21,16 @@ const createChatButton = document.querySelector("#create-chat-button");
 const messageList = document.querySelector("#message-list");
 const loadingStatus = document.querySelector("#loading-status");
 const emptyMessage = document.querySelector("#empty-message");
+const startLearning = document.querySelector("#start-learning");
+const startLearningButton = document.querySelector("#start-learning-button");
+const startLearningStatus = document.querySelector("#start-learning-status");
 const messageForm = document.querySelector("#message-form");
 const messageInput = document.querySelector("#message-input");
 const sendButton = document.querySelector("#send-button");
 
 let activeChatId = null;
 let chats = [];
+let hasTodayChat = false;
 let isMessagePending = false;
 let isManagementPending = false;
 
@@ -89,20 +98,26 @@ function createMessageElement(message) {
 /**
  * 초기 API 상태를 화면과 현재 채팅 상태에 반영합니다.
  *
- * @param {{activeChat: object, chats: object[], messages: object[]}} state 초기 화면 상태입니다.
+ * @param {{activeChat: object | null, chats: object[], messages: object[]}} state 초기 화면 상태입니다.
  */
 function renderChatState({ activeChat, chats: nextChats, messages }) {
-  activeChatId = activeChat.id;
+  activeChatId = activeChat?.id ?? null;
   chats = nextChats;
-  chatTitle.textContent = activeChat.title;
+  chatTitle.textContent = activeChat?.title ?? "오늘의 학습";
 
   chatList.replaceChildren(
-    ...chats.map((chat) => createChatListItem(chat, activeChat.id)),
+    ...chats.map((chat) => createChatListItem(chat, activeChatId)),
   );
 
   messageList.replaceChildren(...messages.map(createMessageElement));
 
-  emptyMessage.hidden = messages.length > 0;
+  const hasActiveChat = activeChat !== null;
+  chatPanel.hidden = !hasActiveChat;
+  messageList.hidden = !hasActiveChat;
+  emptyMessage.hidden = !hasActiveChat || messages.length > 0;
+  startLearning.hidden = hasActiveChat;
+  startLearningStatus.hidden = true;
+  startLearningStatus.classList.remove("is-error");
   loadingStatus.hidden = true;
   syncControlState();
 }
@@ -121,13 +136,14 @@ function appendMessage(message) {
 function syncControlState() {
   const isPending = isMessagePending || isManagementPending;
 
-  createChatButton.disabled = isPending;
+  createChatButton.disabled = isPending || !hasTodayChat;
+  startLearningButton.disabled = isPending;
   chatList.querySelectorAll("button").forEach((button) => {
     button.disabled = isPending;
   });
   messageInput.disabled = isPending || activeChatId === null;
   sendButton.disabled = isPending || activeChatId === null;
-  chatPanel.setAttribute("aria-busy", String(isPending));
+  mainContent.setAttribute("aria-busy", String(isPending));
 }
 
 /**
@@ -214,7 +230,7 @@ async function selectChat(chat) {
 
 /** 생성한 추가 학습을 목록에 반영하고 바로 엽니다. */
 async function createChat() {
-  if (isMessagePending || isManagementPending) {
+  if (isMessagePending || isManagementPending || !hasTodayChat) {
     return;
   }
 
@@ -235,6 +251,39 @@ async function createChat() {
     );
   } finally {
     finishManagementRequest();
+  }
+}
+
+/** 오늘의 기본 학습을 만들고 바로 해당 대화 화면을 엽니다. */
+async function startTodayLearning() {
+  if (isMessagePending || isManagementPending || hasTodayChat) {
+    return;
+  }
+
+  isManagementPending = true;
+  startLearningStatus.textContent = "오늘의 학습을 시작하는 중입니다.";
+  startLearningStatus.classList.remove("is-error");
+  startLearningStatus.hidden = false;
+  syncControlState();
+
+  try {
+    const chat = await startTodayChat();
+    const [nextChats, messages] = await Promise.all([
+      loadChats(),
+      loadChatMessages(chat.id),
+    ]);
+
+    hasTodayChat = true;
+    renderChatState({ activeChat: chat, chats: nextChats, messages });
+  } catch (error) {
+    console.error(error);
+    startLearningStatus.textContent =
+      "오늘의 학습을 시작하지 못했습니다. 다시 시도해 주세요.";
+    startLearningStatus.classList.add("is-error");
+    startLearningStatus.hidden = false;
+  } finally {
+    isManagementPending = false;
+    syncControlState();
   }
 }
 
@@ -265,6 +314,7 @@ async function removeChat(chat) {
     }
 
     const initialState = await loadInitialState();
+    hasTodayChat = initialState.activeChat !== null;
     renderChatState(initialState);
   } catch (error) {
     showManagementError(
@@ -293,6 +343,10 @@ const messageFlow = createMessageFlow({
 messageForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  if (activeChatId === null || isMessagePending || isManagementPending) {
+    return;
+  }
+
   const content = messageInput.value.trim();
 
   if (!content) {
@@ -305,6 +359,17 @@ messageForm.addEventListener("submit", async (event) => {
 });
 
 createChatButton.addEventListener("click", createChat);
+startLearningButton.addEventListener("click", startTodayLearning);
+
+messageInput.addEventListener("keydown", (event) => {
+  const hasCoarsePointer =
+    window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+
+  if (shouldSubmitMessageShortcut(event, hasCoarsePointer)) {
+    event.preventDefault();
+    messageForm.requestSubmit();
+  }
+});
 
 /**
  * 초기 채팅 상태를 불러온 뒤 메시지 입력을 사용할 수 있게 합니다.
@@ -313,6 +378,7 @@ async function startApplication() {
   try {
     const initialState = await loadInitialState();
 
+    hasTodayChat = initialState.activeChat !== null;
     renderChatState(initialState);
   } catch (error) {
     console.error(error);
@@ -320,7 +386,7 @@ async function startApplication() {
     loadingStatus.textContent =
       "학습 기록을 불러오지 못했습니다. 새로고침해 주세요.";
     loadingStatus.classList.add("is-error");
-    chatPanel.setAttribute("aria-busy", "false");
+    mainContent.setAttribute("aria-busy", "false");
   }
 }
 

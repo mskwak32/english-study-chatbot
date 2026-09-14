@@ -1,7 +1,38 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createMessageFlow } from "../message-flow.js";
+import {
+  createMessageFlow,
+  shouldSubmitMessageShortcut,
+} from "../message-flow.js";
+
+test("전송 단축키는 수정자, 터치 Enter, 조합 및 줄바꿈 경계를 구분한다", () => {
+  assert.equal(
+    shouldSubmitMessageShortcut({ key: "Enter", metaKey: true }, false),
+    true,
+  );
+  assert.equal(
+    shouldSubmitMessageShortcut({ key: "Enter", ctrlKey: true }, false),
+    true,
+  );
+  assert.equal(shouldSubmitMessageShortcut({ key: "Enter" }, true), true);
+  assert.equal(
+    shouldSubmitMessageShortcut({ key: "Enter", shiftKey: true }, true),
+    false,
+  );
+  assert.equal(
+    shouldSubmitMessageShortcut(
+      { key: "Enter", metaKey: true, shiftKey: true },
+      false,
+    ),
+    false,
+  );
+  assert.equal(
+    shouldSubmitMessageShortcut({ key: "Enter", isComposing: true }, true),
+    false,
+  );
+  assert.equal(shouldSubmitMessageShortcut({ key: "a" }, true), false);
+});
 
 test("전송 성공 시 사용자와 assistant 메시지를 순서대로 알린다", async () => {
   const events = [];

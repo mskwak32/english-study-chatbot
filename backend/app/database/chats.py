@@ -94,6 +94,34 @@ def get_or_create_default_chat(
     return _chat_from_row(row)
 
 
+def get_default_chat(database_url: str, study_date: date) -> Chat | None:
+    """지정한 날짜의 기본 학습 채팅만 조회하고 없으면 생성하지 않고 None을 반환합니다."""
+    connection = connect_database(database_url)
+
+    try:
+        row = connection.execute(
+            """
+            SELECT
+                id,
+                study_date,
+                kind,
+                extra_number,
+                title,
+                created_at
+            FROM chats
+            WHERE study_date = ? AND kind = 'default'
+            """,
+            (study_date.isoformat(),),
+        ).fetchone()
+    finally:
+        connection.close()
+
+    if row is None:
+        return None
+
+    return _chat_from_row(row)
+
+
 def additional_chat_title(study_date: date, extra_number: int) -> str:
     """날짜와 번호를 사용해 추가 학습 채팅의 제목을 만듭니다."""
     return f"{default_chat_title(study_date)} - 추가 학습 ({extra_number})"

@@ -36,18 +36,24 @@ def configured_client(
         yield client, database_url
 
 
-def test_read_today_chat_creates_and_reuses_default_chat(
+def test_today_chat_is_created_only_by_post_and_then_reused(
     configured_client: tuple[TestClient, str],
 ) -> None:
-    """오늘 채팅을 반복 조회해도 같은 기본 채팅을 반환합니다."""
+    """GET은 생성하지 않고 POST가 오늘 기본 채팅을 생성하거나 재사용합니다."""
     client, _ = configured_client
 
-    first_response = client.get("/chats/today")
-    second_response = client.get("/chats/today")
+    empty_response = client.get("/chats/today")
+    first_response = client.post("/chats/today")
+    second_response = client.post("/chats/today")
+    read_response = client.get("/chats/today")
 
+    assert empty_response.status_code == 200
+    assert empty_response.json() is None
     assert first_response.status_code == 200
     assert second_response.status_code == 200
+    assert read_response.status_code == 200
     assert first_response.json() == second_response.json()
+    assert first_response.json() == read_response.json()
     assert first_response.json()["kind"] == "default"
     assert first_response.json()["extra_number"] is None
 
@@ -57,7 +63,7 @@ def test_create_additional_chat_and_list_chats(
 ) -> None:
     """추가 학습 채팅을 만들면 전체 채팅 목록에 함께 표시됩니다."""
     client, _ = configured_client
-    default_chat = client.get("/chats/today").json()
+    default_chat = client.post("/chats/today").json()
 
     create_response = client.post("/chats/additional")
 
@@ -81,7 +87,7 @@ def test_read_chat_messages_returns_saved_order(
 ) -> None:
     """채팅 메시지를 역할과 저장 순서 그대로 반환합니다."""
     client, database_url = configured_client
-    chat_id = client.get("/chats/today").json()["id"]
+    chat_id = client.post("/chats/today").json()["id"]
 
     add_message(
         database_url,
@@ -133,6 +139,22 @@ def test_delete_chat_removes_existing_chat(
 
     assert response.status_code == 204
     assert response.content == b""
+    assert get_chat(database_url, chat_id) is None
+
+
+def test_delete_default_chat_does_not_recreate_it_on_get(
+    configured_client: tuple[TestClient, str],
+) -> None:
+    """기본 학습을 삭제한 뒤 GET은 새 채팅을 만들지 않고 null을 반환합니다."""
+    client, database_url = configured_client
+    chat_id = client.post("/chats/today").json()["id"]
+
+    delete_response = client.delete(f"/chats/{chat_id}")
+    read_response = client.get("/chats/today")
+
+    assert delete_response.status_code == 204
+    assert read_response.status_code == 200
+    assert read_response.json() is None
     assert get_chat(database_url, chat_id) is None
 
 

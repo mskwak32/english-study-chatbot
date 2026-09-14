@@ -1,4 +1,30 @@
 /**
+ * 메시지 입력에서 전송 단축키를 눌렀는지 판단합니다.
+ *
+ * 데스크톱에서는 Command/Ctrl+Enter로, 터치 중심 기기에서는 수정자 없는 Enter로
+ * 전송합니다. Shift+Enter는 모든 기기에서 줄바꿈으로 남깁니다.
+ *
+ * @param {{key: string, isComposing?: boolean, metaKey?: boolean, ctrlKey?: boolean, shiftKey?: boolean, altKey?: boolean}} event 키보드 이벤트에 필요한 속성입니다.
+ * @param {boolean} hasCoarsePointer 터치 중심 입력 환경인지 여부입니다.
+ * @returns {boolean} 폼 전송을 요청해야 하면 true입니다.
+ */
+export function shouldSubmitMessageShortcut(event, hasCoarsePointer) {
+  if (event.isComposing || event.key !== "Enter") {
+    return false;
+  }
+
+  if (event.shiftKey) {
+    return false;
+  }
+
+  if (event.metaKey || event.ctrlKey) {
+    return true;
+  }
+
+  return hasCoarsePointer && !event.altKey;
+}
+
+/**
  * DOM에 의존하지 않고 한 건의 메시지 전송 흐름을 구성합니다.
  *
  * @param {object} callbacks 전송과 화면 상태 변경에 사용할 콜백입니다.

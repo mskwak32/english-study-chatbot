@@ -67,6 +67,16 @@ export function createAdditionalChat(fetchFunction = globalThis.fetch) {
 }
 
 /**
+ * 오늘의 기본 학습 채팅을 명시적으로 시작하거나, 이미 있으면 해당 채팅을 반환합니다.
+ *
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<object>} 오늘의 기본 학습 채팅입니다.
+ */
+export function startTodayChat(fetchFunction = globalThis.fetch) {
+  return requestJson(fetchFunction, "/chats/today", { method: "POST" });
+}
+
+/**
  * 지정한 채팅을 삭제합니다. 성공 응답은 본문이 없는 204 상태입니다.
  *
  * @param {number} chatId 대상 채팅 식별자입니다.
@@ -95,13 +105,52 @@ export function loadChats(fetchFunction = globalThis.fetch) {
 }
 
 /**
- * 오늘의 채팅과 화면에 필요한 초기 목록·메시지를 함께 불러옵니다.
+ * 현재 학습 프로필을 불러옵니다. 프로필이 없으면 null을 반환합니다.
  *
  * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
- * @returns {Promise<{activeChat: object, chats: object[], messages: object[]}>} 초기 화면 상태입니다.
+ * @returns {Promise<object | null>} 현재 학습 프로필 또는 빈 프로필 상태입니다.
+ */
+export function loadLearningProfile(fetchFunction = globalThis.fetch) {
+  return requestJson(fetchFunction, "/learning/profile");
+}
+
+/**
+ * 최근 학습 이력 목록을 불러옵니다.
+ *
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<object[]>} 서버가 정렬한 학습 이력 목록입니다.
+ */
+export function loadStudyRecords(fetchFunction = globalThis.fetch) {
+  return requestJson(fetchFunction, "/learning/study-records");
+}
+
+/**
+ * 복습 단어와 표현 목록을 불러옵니다.
+ *
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<object[]>} 서버가 정렬한 복습 단어 목록입니다.
+ */
+export function loadReviewWords(fetchFunction = globalThis.fetch) {
+  return requestJson(fetchFunction, "/learning/review-words");
+}
+
+/**
+ * 오늘의 기본 학습과 화면에 필요한 초기 목록·메시지를 함께 불러옵니다.
+ * 오늘의 기본 학습이 아직 없으면 이를 만들지 않고 빈 활성 채팅 상태를 반환합니다.
+ *
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<{activeChat: object | null, chats: object[], messages: object[]}>} 초기 화면 상태입니다.
  */
 export async function loadInitialState(fetchFunction = globalThis.fetch) {
   const activeChat = await requestJson(fetchFunction, "/chats/today");
+
+  if (activeChat === null) {
+    return {
+      activeChat: null,
+      chats: await loadChats(fetchFunction),
+      messages: [],
+    };
+  }
 
   const [chats, messages] = await Promise.all([
     loadChats(fetchFunction),
