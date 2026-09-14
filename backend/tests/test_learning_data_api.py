@@ -23,6 +23,9 @@ def configured_client(
     (instructions_path / "영어_가이드라인.md").write_text(
         "테스트용 학습 가이드라인", encoding="utf-8"
     )
+    (instructions_path / "초기_실력_테스트.md").write_text(
+        "테스트용 초기 실력 테스트 지침", encoding="utf-8"
+    )
 
     monkeypatch.setattr(main.settings, "database_url", database_url)
     monkeypatch.setattr(main.settings, "instructions_path", instructions_path)

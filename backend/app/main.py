@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.api.chats import router as chat_router
-from app.api.learning import router as learning_router
+from app.api.learning_data import router as learning_data_router
 from app.config import PROJECT_ROOT, settings
 from app.database import initialize_database
 from app.instructions import (
@@ -62,7 +62,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(chat_router)
-app.include_router(learning_router)
+app.include_router(learning_data_router)
 
 
 @app.get("/health")
