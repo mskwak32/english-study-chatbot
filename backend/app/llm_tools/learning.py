@@ -8,10 +8,13 @@ from app.agent.protocol import (
     SaveReviewWordToolCall,
 )
 from app.database import (
+    InitialAssessmentError,
     LearningProfileError,
     add_proficiency_test,
+    finish_initial_assessment,
     get_learning_profile,
     list_proficiency_tests,
+    require_initial_assessment_completion,
     save_learning_profile,
     save_review_word,
 )
@@ -73,12 +76,14 @@ def execute_complete_initial_assessment(
     tool_call: CompleteInitialAssessmentToolCall,
     study_date: date,
     current_time: datetime,
+    chat_id: int | None,
 ) -> ToolResult:
     """LLM이 제출한 초기 테스트 결과로 첫 프로필과 테스트 이력을 만듭니다.
 
     점수로 계산한 레벨과 제출한 레벨이 다르면 저장하지 않습니다. 기존 프로필이나
     테스트 이력이 있어도 덮어쓰지 않고 오류를 발생시킵니다.
     """
+    require_initial_assessment_completion(database_url, chat_id)
     arguments = tool_call.arguments
     expected_level = _level_for_initial_assessment_score(arguments.score_earned)
     if arguments.final_level != expected_level:
@@ -116,6 +121,9 @@ def execute_complete_initial_assessment(
         self_expression_result=arguments.self_expression_result,
         created_at=current_time,
     )
+    if chat_id is None:
+        raise InitialAssessmentError("초기 실력 테스트 채팅을 찾을 수 없습니다.")
+    finish_initial_assessment(database_url, chat_id, current_time)
 
     return ToolResult(
         name=tool_call.action,

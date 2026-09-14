@@ -10,6 +10,7 @@ from app.database import (
     get_or_create_default_chat,
     list_messages,
     list_proficiency_tests,
+    start_initial_assessment,
 )
 from app.llm import LLMClient
 from app.study_time import study_date_for, to_utc
@@ -105,6 +106,7 @@ async def start_profile_setup(
         study_guidelines=study_guidelines,
         timezone_name=timezone_name,
         trigger=PROFILE_SETUP_TRIGGER,
+        initial_assessment=True,
         now=now,
     )
 
@@ -117,11 +119,15 @@ async def _start_empty_today_chat(
     study_guidelines: str,
     timezone_name: str,
     trigger: str = INITIAL_LEARNING_TRIGGER,
+    initial_assessment: bool = False,
     now: datetime | None = None,
 ) -> Chat:
     """오늘 채팅을 생성하거나 열고, 비어 있을 때만 LLM의 첫 답변을 저장합니다."""
     current_time = _current_study_time(now)
     chat = get_or_create_today_chat(database_url, timezone_name, current_time)
+
+    if initial_assessment:
+        start_initial_assessment(database_url, chat.id, current_time)
 
     if list_messages(database_url, chat.id):
         return chat

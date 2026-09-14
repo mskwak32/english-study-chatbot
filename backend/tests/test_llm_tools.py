@@ -8,11 +8,15 @@ from app.agent.protocol import (
     parse_agent_response,
 )
 from app.database import (
+    InitialAssessmentError,
     LearningProfileError,
+    add_message,
     get_learning_profile,
+    get_or_create_default_chat,
     initialize_database,
     list_proficiency_tests,
     list_review_words,
+    start_initial_assessment,
 )
 from app.llm_tools import (
     execute_complete_initial_assessment,
@@ -23,6 +27,24 @@ from app.llm_tools import (
 def _database_url(tmp_path: Path) -> str:
     """각 테스트가 독립적으로 사용할 SQLite URL을 만듭니다."""
     return f"sqlite:///{tmp_path / 'data' / 'chat.db'}"
+
+
+def _start_initial_assessment(database_url: str, answer_count: int) -> int:
+    """지정한 수의 답변을 가진 초기 테스트 채팅을 만듭니다."""
+    current_time = datetime(2026, 9, 10, tzinfo=UTC)
+    chat = get_or_create_default_chat(
+        database_url, study_date=date(2026, 9, 10), created_at=current_time
+    )
+    start_initial_assessment(database_url, chat.id, current_time)
+    for number in range(answer_count):
+        add_message(
+            database_url,
+            chat.id,
+            role="user",
+            content=f"답변 {number + 1}",
+            created_at=current_time,
+        )
+    return chat.id
 
 
 def test_execute_save_review_word_uses_server_values(
@@ -75,6 +97,7 @@ def test_complete_initial_assessment_saves_validated_profile_and_result(
     """초기 테스트 도구는 서버 점수 기준으로 프로필과 결과를 함께 저장합니다."""
     database_url = _database_url(tmp_path)
     initialize_database(database_url)
+    chat_id = _start_initial_assessment(database_url, answer_count=14)
     response = parse_agent_response(
         {
             "action": "complete_initial_assessment",
@@ -99,6 +122,7 @@ def test_complete_initial_assessment_saves_validated_profile_and_result(
         tool_call=response,
         study_date=date(2026, 9, 10),
         current_time=current_time,
+        chat_id=chat_id,
     )
 
     assert result.content == {
@@ -123,6 +147,7 @@ def test_complete_initial_assessment_rejects_a_level_that_does_not_match_score(
     """모델이 점수와 다른 레벨을 요청하면 프로필을 저장하지 않습니다."""
     database_url = _database_url(tmp_path)
     initialize_database(database_url)
+    chat_id = _start_initial_assessment(database_url, answer_count=14)
     response = parse_agent_response(
         {
             "action": "complete_initial_assessment",
@@ -147,6 +172,44 @@ def test_complete_initial_assessment_rejects_a_level_that_does_not_match_score(
             tool_call=response,
             study_date=date(2026, 9, 10),
             current_time=datetime(2026, 9, 10, tzinfo=UTC),
+            chat_id=chat_id,
+        )
+
+    assert get_learning_profile(database_url) is None
+
+
+def test_complete_initial_assessment_rejects_missing_answers(
+    tmp_path: Path,
+) -> None:
+    """도구를 직접 호출해도 답변 14개 전에는 프로필을 저장하지 않습니다."""
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    chat_id = _start_initial_assessment(database_url, answer_count=0)
+    response = parse_agent_response(
+        {
+            "action": "complete_initial_assessment",
+            "arguments": {
+                "final_level": "A1",
+                "score_earned": 2,
+                "vocabulary_result": "어휘 결과",
+                "grammar_result": "문법 결과",
+                "reading_result": "독해 결과",
+                "self_expression_result": "자기표현 결과",
+                "strengths": "강점",
+                "weaknesses": "보완점",
+                "level_note": "메모",
+            },
+        }
+    )
+    assert isinstance(response, CompleteInitialAssessmentToolCall)
+
+    with pytest.raises(InitialAssessmentError, match="사용자 답변 14개"):
+        execute_complete_initial_assessment(
+            database_url,
+            tool_call=response,
+            study_date=date(2026, 9, 10),
+            current_time=datetime(2026, 9, 10, tzinfo=UTC),
+            chat_id=chat_id,
         )
 
     assert get_learning_profile(database_url) is None

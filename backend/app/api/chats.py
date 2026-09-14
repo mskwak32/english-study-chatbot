@@ -13,6 +13,7 @@ from app.config import settings
 from app.database import (
     ChatError,
     DatabaseError,
+    InitialAssessmentError,
     LearningProfileError,
     MessageError,
     ReviewWordError,
@@ -174,6 +175,7 @@ async def start_today_chat(request: Request) -> ChatResponse:
     except (
         ChatError,
         DatabaseError,
+        InitialAssessmentError,
         LearningProfileError,
         MessageError,
         PromptError,
@@ -215,6 +217,7 @@ async def start_profile_setup_chat(request: Request) -> ChatResponse:
     except (
         ChatError,
         DatabaseError,
+        InitialAssessmentError,
         LearningProfileError,
         MessageError,
         PromptError,
@@ -346,6 +349,7 @@ async def create_chat_message(
         _raise_conversation_http_error(error)
     except (
         DatabaseError,
+        InitialAssessmentError,
         LearningProfileError,
         MessageError,
         PromptError,

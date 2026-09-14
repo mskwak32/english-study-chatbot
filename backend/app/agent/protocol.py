@@ -108,10 +108,15 @@ AgentResponse = Annotated[
 
 _AGENT_RESPONSE_ADAPTER = TypeAdapter(AgentResponse)
 
+InitialAssessmentInProgressResponse = AgentReply
+
 # 동일한 정의를 Ollama의 출력 스키마와 Python 입력 검증에 사용
 # 이렇게 하면 Ollama에게 전달할 JSON 스키마와
 # Ollama가 반환한 JSON 검증 규칙이 달라지는 문제를 줄일 수 있음
 AGENT_RESPONSE_SCHEMA: dict[str, object] = _AGENT_RESPONSE_ADAPTER.json_schema()
+INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_SCHEMA: dict[str, object] = (
+    InitialAssessmentInProgressResponse.model_json_schema()
+)
 
 
 def parse_agent_response(

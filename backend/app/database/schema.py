@@ -238,4 +238,21 @@ def _applied_migration_version(connection: sqlite3.Connection) -> set[int]:
     return {row[0] for row in rows}
 
 
-MIGRATIONS = ((1, _create_initial_schema),)
+def _create_initial_assessment_sessions(connection: sqlite3.Connection) -> None:
+    """버전 2의 초기 실력 테스트 진행 상태 테이블을 만듭니다."""
+    connection.execute(
+        """
+        CREATE TABLE initial_assessment_sessions (
+            chat_id INTEGER PRIMARY KEY,
+            started_at TEXT NOT NULL,
+            completed_at TEXT,
+            FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
+        )
+        """
+    )
+
+
+MIGRATIONS = (
+    (1, _create_initial_schema),
+    (2, _create_initial_assessment_sessions),
+)

@@ -8,12 +8,18 @@ from app.agent import (
     AgentLoopError,
     run_agent,
 )
-from app.agent.protocol import AGENT_RESPONSE_SCHEMA
+from app.agent.protocol import (
+    AGENT_RESPONSE_SCHEMA,
+    INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_SCHEMA,
+)
 from app.database import (
+    add_message,
     get_learning_profile,
+    get_or_create_default_chat,
     initialize_database,
     list_proficiency_tests,
     list_review_words,
+    start_initial_assessment,
 )
 from app.llm import (
     LLMMessage,
@@ -57,6 +63,29 @@ class FakeLLMClient:
 def _database_url(tmp_path: Path) -> str:
     """각 테스트가 독립적으로 사용할 SQLite URL을 만듭니다."""
     return f"sqlite:///{tmp_path / 'data' / 'chat.db'}"
+
+
+def _start_initial_assessment(database_url: str) -> int:
+    """14개 답변을 저장할 테스트 전용 채팅을 만들고 반환합니다."""
+    current_time = datetime(2026, 9, 10, tzinfo=UTC)
+    chat = get_or_create_default_chat(
+        database_url, study_date=date(2026, 9, 10), created_at=current_time
+    )
+    start_initial_assessment(database_url, chat.id, current_time)
+    return chat.id
+
+
+def _add_initial_assessment_answers(database_url: str, chat_id: int) -> None:
+    """완료 조건을 만족하는 14개의 사용자 답변을 저장합니다."""
+    current_time = datetime(2026, 9, 10, tzinfo=UTC)
+    for number in range(14):
+        add_message(
+            database_url,
+            chat_id,
+            role="user",
+            content=f"답변 {number + 1}",
+            created_at=current_time,
+        )
 
 
 def test_run_agent_returns_direct_reply(
@@ -152,12 +181,40 @@ def test_run_agent_executes_tool_and_requests_final_reply(
     assert review_words[0].term == "hesitate"
 
 
+def test_run_agent_hides_completion_action_until_all_answers_are_saved(
+    tmp_path: Path,
+) -> None:
+    """초기 테스트의 첫 문제에서는 완료 도구를 LLM 선택지에서 제외합니다."""
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    chat_id = _start_initial_assessment(database_url)
+    llm_client = FakeLLMClient(
+        responses=[{"action": "reply", "message": "첫 번째 어휘 문제입니다."}]
+    )
+
+    reply = asyncio.run(
+        run_agent(
+            llm_client,
+            messages=[LLMMessage(role="user", content="학습 프로필 만들기")],
+            database_url=database_url,
+            study_date=date(2026, 9, 10),
+            current_time=datetime(2026, 9, 10, tzinfo=UTC),
+            chat_id=chat_id,
+        )
+    )
+
+    assert reply == "첫 번째 어휘 문제입니다."
+    assert llm_client.calls[0][1] == INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_SCHEMA
+
+
 def test_run_agent_completes_initial_assessment_before_returning_reply(
     tmp_path: Path,
 ) -> None:
     """초기 테스트 완료 도구는 저장 결과를 본 뒤 최종 안내를 반환합니다."""
     database_url = _database_url(tmp_path)
     initialize_database(database_url)
+    chat_id = _start_initial_assessment(database_url)
+    _add_initial_assessment_answers(database_url, chat_id)
     llm_client = FakeLLMClient(
         responses=[
             {
@@ -188,11 +245,13 @@ def test_run_agent_completes_initial_assessment_before_returning_reply(
             database_url=database_url,
             study_date=date(2026, 9, 10),
             current_time=datetime(2026, 9, 10, tzinfo=UTC),
+            chat_id=chat_id,
         )
     )
 
     assert reply == "초기 실력 테스트를 완료했습니다."
     assert len(llm_client.calls) == 2
+    assert llm_client.calls[0][1] == AGENT_RESPONSE_SCHEMA
     assert get_learning_profile(database_url) is not None
     assert [test.final_level for test in list_proficiency_tests(database_url)] == ["B1"]
 

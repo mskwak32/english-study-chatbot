@@ -6,6 +6,7 @@ import pytest
 from app import main
 from app.database import (
     get_or_create_default_chat,
+    is_initial_assessment_active,
     list_messages,
     save_learning_profile,
 )
@@ -180,6 +181,7 @@ def test_profile_setup_starts_once_before_a_learning_profile_exists(
     assert llm_client.calls[0][-1] == LLMMessage(
         role="user", content="학습 프로필 만들기"
     )
+    assert is_initial_assessment_active(database_url, first_response.json()["id"])
     messages = list_messages(database_url, first_response.json()["id"])
     assert [
         (message.role, message.content, message.sequence) for message in messages

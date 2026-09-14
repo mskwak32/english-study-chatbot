@@ -62,6 +62,7 @@ async def respond_to_chat(
         database_url=database_url,
         study_date=study_date,
         current_time=current_time,
+        chat_id=chat_id,
     )
 
     return add_message(
@@ -104,6 +105,7 @@ async def respond_to_initial_chat(
         database_url=database_url,
         study_date=study_date,
         current_time=current_time,
+        chat_id=chat_id,
     )
 
     return add_message(

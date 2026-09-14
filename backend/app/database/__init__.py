@@ -11,6 +11,15 @@ from .chats import (
     list_chats,
 )
 from .connection import DatabaseError, connect_database, database_path_from_url
+from .initial_assessments import (
+    INITIAL_ASSESSMENT_ANSWER_COUNT,
+    InitialAssessmentError,
+    can_complete_initial_assessment,
+    finish_initial_assessment,
+    is_initial_assessment_active,
+    require_initial_assessment_completion,
+    start_initial_assessment,
+)
 from .learning_profiles import (
     LearningProfile,
     LearningProfileError,
@@ -40,9 +49,11 @@ from .study_records import (
 )
 
 __all__ = [
+    "INITIAL_ASSESSMENT_ANSWER_COUNT",
     "Chat",
     "ChatError",
     "DatabaseError",
+    "InitialAssessmentError",
     "LearningProfile",
     "LearningProfileError",
     "LevelChange",
@@ -57,22 +68,27 @@ __all__ = [
     "add_message",
     "add_proficiency_test",
     "add_study_record",
+    "can_complete_initial_assessment",
     "connect_database",
     "create_additional_chat",
     "database_path_from_url",
     "delete_chat",
     "delete_review_word",
+    "finish_initial_assessment",
     "get_chat",
     "get_default_chat",
     "get_learning_profile",
     "get_or_create_default_chat",
     "initialize_database",
+    "is_initial_assessment_active",
     "list_chats",
     "list_level_changes",
     "list_messages",
     "list_proficiency_tests",
     "list_recent_study_records",
     "list_review_words",
+    "require_initial_assessment_completion",
     "save_learning_profile",
     "save_review_word",
+    "start_initial_assessment",
 ]

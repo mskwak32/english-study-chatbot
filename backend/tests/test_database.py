@@ -96,6 +96,7 @@ def test_initialize_database_is_idempotent_and_preserves_data(tmp_path: Path) ->
         "level_changes",
         "review_words",
         "study_records",
+        "initial_assessment_sessions",
     } <= table_names
     assert chat_titles == [("2026-09-07 영어 학습",)]
 
@@ -123,4 +124,4 @@ def test_initialize_database_records_initial_migration_once(
     finally:
         connection.close()
 
-    assert migration_versions == [(1,)]
+    assert migration_versions == [(1,), (2,)]

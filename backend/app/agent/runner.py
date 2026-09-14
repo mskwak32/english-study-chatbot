@@ -6,11 +6,13 @@ from datetime import date, datetime
 
 from app.agent.protocol import (
     AGENT_RESPONSE_SCHEMA,
+    INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_SCHEMA,
     AgentReply,
     CompleteInitialAssessmentToolCall,
     SaveReviewWordToolCall,
     parse_agent_response,
 )
+from app.database import can_complete_initial_assessment, is_initial_assessment_active
 from app.llm import LLMClient, LLMMessage
 from app.llm_tools import (
     ToolResult,
@@ -45,6 +47,20 @@ def _tool_result_message(result: ToolResult) -> LLMMessage:
     )
 
 
+def _response_schema_for_chat(
+    database_url: str, chat_id: int | None
+) -> dict[str, object]:
+    """초기 테스트 답변 수에 따라 LLM이 선택할 수 있는 행동을 제한합니다."""
+    if (
+        chat_id is not None
+        and is_initial_assessment_active(database_url, chat_id)
+        and not can_complete_initial_assessment(database_url, chat_id)
+    ):
+        return INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_SCHEMA
+
+    return AGENT_RESPONSE_SCHEMA
+
+
 async def run_agent(
     llm_client: LLMClient,
     *,
@@ -52,6 +68,7 @@ async def run_agent(
     database_url: str,
     study_date: date,
     current_time: datetime,
+    chat_id: int | None = None,
     max_tool_calls: int = 3,
 ) -> str:
     """LLM이 사용자에게 보여줄 최종 답변을 만들 때까지 응답을 처리합니다.
@@ -71,7 +88,8 @@ async def run_agent(
 
     while True:
         llm_response = await llm_client.chat_structured(
-            messages=working_messages, response_schema=AGENT_RESPONSE_SCHEMA
+            messages=working_messages,
+            response_schema=_response_schema_for_chat(database_url, chat_id),
         )
         agent_response = parse_agent_response(llm_response.content)
 
@@ -97,6 +115,7 @@ async def run_agent(
                 tool_call=agent_response,
                 study_date=study_date,
                 current_time=current_time,
+                chat_id=chat_id,
             )
         else:
             raise TypeError(
