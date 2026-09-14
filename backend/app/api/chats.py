@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chats", tags=["chats"])
 
+
 class ChatResponse(BaseModel):
     """저장된 채팅 한 건의 메타데이터를 반환하는 API 응답입니다."""
 
@@ -42,10 +43,11 @@ class ChatResponse(BaseModel):
 
     id: int
     study_date: date
-    kind: Literal["default","extra"]
+    kind: Literal["default", "extra"]
     extra_number: int | None
     title: str
     created_at: datetime
+
 
 class MessageResponse(BaseModel):
     """저장된 채팅 메시지 한 건을 반환하는 API 응답입니다."""
@@ -54,10 +56,11 @@ class MessageResponse(BaseModel):
 
     id: int
     chat_id: int
-    role: Literal["user","assistant"]
+    role: Literal["user", "assistant"]
     content: str
     sequence: int
     created_at: datetime
+
 
 class ChatMessageRequest(BaseModel):
     """사용자가 채팅에 보낼 메시지 본문입니다."""
@@ -68,6 +71,7 @@ class ChatMessageRequest(BaseModel):
             strip_whitespace=True, min_length=1, max_length=USER_MESSAGE_CHARACTER_LIMIT
         ),
     ]
+
 
 @router.get(
     "/today",
@@ -115,11 +119,8 @@ def create_today_chat() -> ChatResponse:
 
     return ChatResponse.model_validate(chat)
 
-@router.get(
-    "",
-    response_model=list[ChatResponse],
-    status_code=status.HTTP_200_OK
-)
+
+@router.get("", response_model=list[ChatResponse], status_code=status.HTTP_200_OK)
 def read_chats() -> list[ChatResponse]:
     """저장된 모든 채팅을 최근 학습 날짜부터 반환합니다."""
     try:
@@ -128,36 +129,33 @@ def read_chats() -> list[ChatResponse]:
         logger.exception("채팅 목록을 불러오지 못했습니다.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="채팅 목록을 불러오지 못했습니다."
+            detail="채팅 목록을 불러오지 못했습니다.",
         ) from error
 
     return [ChatResponse.model_validate(chat) for chat in chats]
 
+
 @router.post(
-        "/additional",
-        response_model=ChatResponse,
-        status_code=status.HTTP_201_CREATED
+    "/additional", response_model=ChatResponse, status_code=status.HTTP_201_CREATED
 )
 def create_additional_chat() -> ChatResponse:
     """오늘의 추가 학습을 생성합니다."""
     try:
-        chat = create_today_additional_chat(
-            settings.database_url,
-            settings.timezone
-        )
+        chat = create_today_additional_chat(settings.database_url, settings.timezone)
     except (ChatError, DatabaseError) as error:
         logger.exception("추가 학습 채팅을 만들지 못했습니다.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="추가 학습 채팅을 만들지 못했습니다."
+            detail="추가 학습 채팅을 만들지 못했습니다.",
         ) from error
 
     return ChatResponse.model_validate(chat)
 
+
 @router.get(
     "/{chat_id}/messages",
     response_model=list[MessageResponse],
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
 )
 def read_chat_messages(chat_id: int) -> list[MessageResponse]:
     """지정한 채팅의 메시지를 저장 순서대로 반환합니다."""
@@ -166,8 +164,7 @@ def read_chat_messages(chat_id: int) -> list[MessageResponse]:
 
         if chat is None:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="채팅을 찾을 수 없습니다."
+                status_code=status.HTTP_404_NOT_FOUND, detail="채팅을 찾을 수 없습니다."
             )
 
         messages = list_messages(settings.database_url, chat_id)
@@ -177,15 +174,13 @@ def read_chat_messages(chat_id: int) -> list[MessageResponse]:
         logger.exception("채팅 메시지를 불러오지 못했습니다.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="채팅 메시지를 불러오지 못했습니다."
+            detail="채팅 메시지를 불러오지 못했습니다.",
         ) from error
 
     return [MessageResponse.model_validate(message) for message in messages]
 
-@router.delete(
-    "/{chat_id}",
-    status_code=status.HTTP_204_NO_CONTENT
-)
+
+@router.delete("/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_chat(chat_id: int) -> Response:
     """채팅과 메시지를 삭제하고 연결된 학습 기록의 채팅 참조만 비웁니다."""
     try:
@@ -194,16 +189,16 @@ def remove_chat(chat_id: int) -> Response:
         logger.exception("채팅을 삭제하지 못했습니다.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="채팅을 삭제하지 못했습니다."
+            detail="채팅을 삭제하지 못했습니다.",
         ) from error
 
     if not deleted:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="채팅을 찾을 수 없습니다."
+            status_code=status.HTTP_404_NOT_FOUND, detail="채팅을 찾을 수 없습니다."
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 @router.post(
     "/{chat_id}/messages",

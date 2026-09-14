@@ -62,11 +62,5 @@ def health_check() -> dict[str, str]:
     """애플리케이션의 기본 상태를 반환합니다."""
     return {"status": "ok"}
 
-app.mount(
-    "/",
-    StaticFiles(
-        directory=PROJECT_ROOT / "web",
-        html=True
-    ),
-    name="web"
-)
+
+app.mount("/", StaticFiles(directory=PROJECT_ROOT / "web", html=True), name="web")

@@ -123,4 +123,6 @@ def read_review_words() -> list[ReviewWordResponse]:
             detail="복습 단어를 불러오지 못했습니다.",
         ) from error
 
-    return [ReviewWordResponse.model_validate(review_word) for review_word in review_words]
+    return [
+        ReviewWordResponse.model_validate(review_word) for review_word in review_words
+    ]

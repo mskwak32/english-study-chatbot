@@ -108,6 +108,7 @@ def test_create_chat_message_returns_assistant_reply(
     assert response.json()["content"] == "오늘은 과거형을 연습하겠습니다."
     assert response.json()["sequence"] == 2
 
+
 def test_create_chat_message_returns_404_before_calling_llm(
     configured_client: tuple[TestClient, str],
     monkeypatch: pytest.MonkeyPatch,
@@ -156,6 +157,7 @@ def test_create_chat_message_returns_503_for_model_connection_error(
             "현재 영어 학습 모델에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."
         )
     }
+
 
 def test_create_chat_message_returns_502_for_invalid_model_response(
     configured_client: tuple[TestClient, str],
