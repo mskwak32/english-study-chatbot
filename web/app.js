@@ -1,9 +1,18 @@
-import { loadInitialState, sendChatMessage } from "/api.js";
+import {
+  createAdditionalChat,
+  deleteChat,
+  loadChatMessages,
+  loadChats,
+  loadInitialState,
+  sendChatMessage,
+} from "/api.js";
+import { deleteConfirmedChat } from "/chat-management.js";
 import { createMessageFlow } from "/message-flow.js";
 
 const chatPanel = document.querySelector("#chat-panel");
 const chatTitle = document.querySelector("#chat-title");
 const chatList = document.querySelector("#chat-list");
+const createChatButton = document.querySelector("#create-chat-button");
 const messageList = document.querySelector("#message-list");
 const loadingStatus = document.querySelector("#loading-status");
 const emptyMessage = document.querySelector("#empty-message");
@@ -12,25 +21,40 @@ const messageInput = document.querySelector("#message-input");
 const sendButton = document.querySelector("#send-button");
 
 let activeChatId = null;
+let chats = [];
+let isMessagePending = false;
+let isManagementPending = false;
 
 /**
  * 채팅 목록에 표시할 항목을 만들고 현재 선택 상태를 반영합니다.
  *
  * @param {{id: number, title: string}} chat 표시할 채팅입니다.
- * @param {number} activeChatId 현재 선택된 채팅 식별자입니다.
+ * @param {number} selectedChatId 현재 선택된 채팅 식별자입니다.
  * @returns {HTMLLIElement} 채팅 목록 항목입니다.
  */
-function createChatListItem(chat, activeChatId) {
+function createChatListItem(chat, selectedChatId) {
   const item = document.createElement("li");
+  const selectButton = document.createElement("button");
+  const deleteButton = document.createElement("button");
 
   item.className = "chat-list-item";
-  item.textContent = chat.title;
+  selectButton.className = "chat-select-button";
+  selectButton.type = "button";
+  selectButton.textContent = chat.title;
+  selectButton.addEventListener("click", () => selectChat(chat));
 
-  if (chat.id === activeChatId) {
+  deleteButton.className = "chat-delete-button";
+  deleteButton.type = "button";
+  deleteButton.textContent = "삭제";
+  deleteButton.setAttribute("aria-label", `${chat.title} 삭제`);
+  deleteButton.addEventListener("click", () => removeChat(chat));
+
+  if (chat.id === selectedChatId) {
     item.classList.add("is-active");
-    item.setAttribute("aria-current", "true");
+    selectButton.setAttribute("aria-current", "true");
   }
 
+  item.append(selectButton, deleteButton);
   return item;
 }
 
@@ -67,8 +91,9 @@ function createMessageElement(message) {
  *
  * @param {{activeChat: object, chats: object[], messages: object[]}} state 초기 화면 상태입니다.
  */
-function renderInitialState({ activeChat, chats, messages }) {
+function renderChatState({ activeChat, chats: nextChats, messages }) {
   activeChatId = activeChat.id;
+  chats = nextChats;
   chatTitle.textContent = activeChat.title;
 
   chatList.replaceChildren(
@@ -79,7 +104,7 @@ function renderInitialState({ activeChat, chats, messages }) {
 
   emptyMessage.hidden = messages.length > 0;
   loadingStatus.hidden = true;
-  chatPanel.setAttribute("aria-busy", "false");
+  syncControlState();
 }
 
 /**
@@ -92,15 +117,27 @@ function appendMessage(message) {
   emptyMessage.hidden = true;
 }
 
+/** 선택·전송 요청이 겹치지 않도록 모든 조작 요소의 잠금 상태를 맞춥니다. */
+function syncControlState() {
+  const isPending = isMessagePending || isManagementPending;
+
+  createChatButton.disabled = isPending;
+  chatList.querySelectorAll("button").forEach((button) => {
+    button.disabled = isPending;
+  });
+  messageInput.disabled = isPending || activeChatId === null;
+  sendButton.disabled = isPending || activeChatId === null;
+  chatPanel.setAttribute("aria-busy", String(isPending));
+}
+
 /**
  * 메시지 전송 대기 상태에 맞춰 입력 폼과 로딩 안내를 갱신합니다.
  *
  * @param {boolean} isPending 전송 대기 여부입니다.
  */
 function setMessageFormPending(isPending) {
-  messageInput.disabled = isPending;
-  sendButton.disabled = isPending;
-  chatPanel.setAttribute("aria-busy", String(isPending));
+  isMessagePending = isPending;
+  syncControlState();
 
   if (isPending) {
     loadingStatus.textContent = "영어 튜터의 응답을 기다리는 중입니다.";
@@ -111,6 +148,131 @@ function setMessageFormPending(isPending) {
 
   if (!loadingStatus.classList.contains("is-error")) {
     loadingStatus.hidden = true;
+  }
+}
+
+/**
+ * 채팅 관리 요청 중에는 목록과 메시지 입력을 함께 잠급니다.
+ *
+ * @param {string} message 사용자에게 보일 진행 상태입니다.
+ */
+function startManagementRequest(message) {
+  isManagementPending = true;
+  loadingStatus.textContent = message;
+  loadingStatus.classList.remove("is-error");
+  loadingStatus.hidden = false;
+  syncControlState();
+}
+
+/** 관리 요청을 끝내고 오류가 없으면 진행 상태를 숨깁니다. */
+function finishManagementRequest() {
+  isManagementPending = false;
+  syncControlState();
+
+  if (!loadingStatus.classList.contains("is-error")) {
+    loadingStatus.hidden = true;
+  }
+}
+
+/**
+ * 관리 요청 실패를 사용자에게 알립니다.
+ *
+ * @param {string} message 사용자에게 보일 오류입니다.
+ * @param {unknown} error 기록할 원본 오류입니다.
+ */
+function showManagementError(message, error) {
+  console.error(error);
+  loadingStatus.textContent = message;
+  loadingStatus.classList.add("is-error");
+  loadingStatus.hidden = false;
+}
+
+/**
+ * 선택한 채팅의 메시지를 읽어 현재 화면으로 전환합니다.
+ *
+ * @param {{id: number, title: string}} chat 선택할 채팅입니다.
+ */
+async function selectChat(chat) {
+  if (chat.id === activeChatId || isMessagePending || isManagementPending) {
+    return;
+  }
+
+  startManagementRequest("학습 기록을 불러오는 중입니다.");
+
+  try {
+    const messages = await loadChatMessages(chat.id);
+    renderChatState({ activeChat: chat, chats, messages });
+  } catch (error) {
+    showManagementError(
+      "선택한 학습 기록을 불러오지 못했습니다. 다시 시도해 주세요.",
+      error,
+    );
+  } finally {
+    finishManagementRequest();
+  }
+}
+
+/** 생성한 추가 학습을 목록에 반영하고 바로 엽니다. */
+async function createChat() {
+  if (isMessagePending || isManagementPending) {
+    return;
+  }
+
+  startManagementRequest("추가 학습을 만드는 중입니다.");
+
+  try {
+    const chat = await createAdditionalChat();
+    const [nextChats, messages] = await Promise.all([
+      loadChats(),
+      loadChatMessages(chat.id),
+    ]);
+
+    renderChatState({ activeChat: chat, chats: nextChats, messages });
+  } catch (error) {
+    showManagementError(
+      "추가 학습을 만들지 못했습니다. 다시 시도해 주세요.",
+      error,
+    );
+  } finally {
+    finishManagementRequest();
+  }
+}
+
+/**
+ * 삭제를 확인한 뒤 오늘 채팅을 기준으로 화면 전체를 안정 상태로 복원합니다.
+ *
+ * @param {{id: number, title: string}} chat 삭제할 채팅입니다.
+ */
+async function removeChat(chat) {
+  if (isMessagePending || isManagementPending) {
+    return;
+  }
+
+  startManagementRequest("학습 기록 삭제를 확인하는 중입니다.");
+
+  try {
+    const deleted = await deleteConfirmedChat(chat, {
+      confirmDelete: (target) =>
+        window.confirm(`\"${target.title}\" 학습 기록을 삭제하시겠습니까?`),
+      deleteChat: async (chatId) => {
+        loadingStatus.textContent = "학습 기록을 삭제하는 중입니다.";
+        await deleteChat(chatId);
+      },
+    });
+
+    if (!deleted) {
+      return;
+    }
+
+    const initialState = await loadInitialState();
+    renderChatState(initialState);
+  } catch (error) {
+    showManagementError(
+      "학습 기록을 삭제하지 못했습니다. 다시 시도해 주세요.",
+      error,
+    );
+  } finally {
+    finishManagementRequest();
   }
 }
 
@@ -142,6 +304,8 @@ messageForm.addEventListener("submit", async (event) => {
   messageInput.focus();
 });
 
+createChatButton.addEventListener("click", createChat);
+
 /**
  * 초기 채팅 상태를 불러온 뒤 메시지 입력을 사용할 수 있게 합니다.
  */
@@ -149,9 +313,7 @@ async function startApplication() {
   try {
     const initialState = await loadInitialState();
 
-    renderInitialState(initialState);
-    messageInput.disabled = false;
-    sendButton.disabled = false;
+    renderChatState(initialState);
   } catch (error) {
     console.error(error);
 

@@ -46,6 +46,55 @@ export function sendChatMessage(
 }
 
 /**
+ * 지정한 채팅의 저장된 메시지를 순서대로 불러옵니다.
+ *
+ * @param {number} chatId 대상 채팅 식별자입니다.
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<object[]>} 저장된 메시지 목록입니다.
+ */
+export function loadChatMessages(chatId, fetchFunction = globalThis.fetch) {
+  return requestJson(fetchFunction, `/chats/${chatId}/messages`);
+}
+
+/**
+ * 오늘 날짜의 추가 학습 채팅을 생성합니다.
+ *
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<object>} 새로 만든 채팅입니다.
+ */
+export function createAdditionalChat(fetchFunction = globalThis.fetch) {
+  return requestJson(fetchFunction, "/chats/additional", { method: "POST" });
+}
+
+/**
+ * 지정한 채팅을 삭제합니다. 성공 응답은 본문이 없는 204 상태입니다.
+ *
+ * @param {number} chatId 대상 채팅 식별자입니다.
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<void>} 삭제가 완료되면 이행됩니다.
+ */
+export async function deleteChat(chatId, fetchFunction = globalThis.fetch) {
+  const response = await fetchFunction(`/chats/${chatId}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`서버 요청에 실패했습니다: ${response.status}`);
+  }
+}
+
+/**
+ * 전체 채팅 목록을 불러옵니다.
+ *
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<object[]>} 채팅 목록입니다.
+ */
+export function loadChats(fetchFunction = globalThis.fetch) {
+  return requestJson(fetchFunction, "/chats");
+}
+
+/**
  * 오늘의 채팅과 화면에 필요한 초기 목록·메시지를 함께 불러옵니다.
  *
  * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
@@ -55,8 +104,8 @@ export async function loadInitialState(fetchFunction = globalThis.fetch) {
   const activeChat = await requestJson(fetchFunction, "/chats/today");
 
   const [chats, messages] = await Promise.all([
-    requestJson(fetchFunction, "/chats"),
-    requestJson(fetchFunction, `/chats/${activeChat.id}/messages`),
+    loadChats(fetchFunction),
+    loadChatMessages(activeChat.id, fetchFunction),
   ]);
 
   return {

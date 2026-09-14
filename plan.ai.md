@@ -245,6 +245,7 @@ Agent와 Ollama를 분리하고 데이터를 영속화한다.
 
 - ARM64 호환 Agent 이미지
 - `agent`, `ollama` 서비스 구성
+- 브라우저 접속용 호스트 포트 `8100`을 Agent 컨테이너의 FastAPI 포트 `8000`에 연결
 - 모델, SQLite, 런타임 지침 영속 볼륨
 - 비루트 컨테이너와 최소 권한
 - health check 및 재시작 정책

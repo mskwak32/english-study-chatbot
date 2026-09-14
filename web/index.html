@@ -14,7 +14,12 @@
 
     <div class="app-layout">
       <aside class="chat-sidebar" aria-labelledby="chat-list-title">
-        <h2 id="chat-list-title">학습 기록</h2>
+        <div class="chat-sidebar-header">
+          <h2 id="chat-list-title">학습 기록</h2>
+          <button id="create-chat-button" type="button" disabled>
+            오늘의 추가 학습
+          </button>
+        </div>
         <ol id="chat-list" class="chat-list"></ol>
       </aside>
 

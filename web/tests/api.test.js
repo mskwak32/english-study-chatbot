@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadInitialState, sendChatMessage } from "../api.js";
+import {
+  createAdditionalChat,
+  deleteChat,
+  loadChatMessages,
+  loadChats,
+  loadInitialState,
+  sendChatMessage,
+} from "../api.js";
 
 test("오늘 채팅과 저장된 메시지를 초기 상태로 불러온다", async () => {
   const activeChat = {
@@ -94,4 +101,41 @@ test("채팅 메시지를 same-origin API에 JSON으로 전송한다", async () 
     body: JSON.stringify({ content: "Hello" }),
   });
   assert.deepEqual(result, assistantMessage);
+});
+
+test("채팅 관리 API는 same-origin 경로와 HTTP 메서드를 사용한다", async () => {
+  const requests = [];
+  const fakeFetch = async (path, options) => {
+    requests.push({ path, options });
+
+    return {
+      ok: true,
+      status: path === "/chats/additional" ? 201 : 200,
+      json: async () => ({ id: 7 }),
+    };
+  };
+
+  await loadChatMessages(7, fakeFetch);
+  await createAdditionalChat(fakeFetch);
+  await deleteChat(7, fakeFetch);
+  await loadChats(fakeFetch);
+
+  assert.deepEqual(requests, [
+    {
+      path: "/chats/7/messages",
+      options: { headers: { Accept: "application/json" } },
+    },
+    {
+      path: "/chats/additional",
+      options: { method: "POST", headers: { Accept: "application/json" } },
+    },
+    {
+      path: "/chats/7",
+      options: { method: "DELETE", headers: { Accept: "application/json" } },
+    },
+    {
+      path: "/chats",
+      options: { headers: { Accept: "application/json" } },
+    },
+  ]);
 });

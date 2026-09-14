@@ -45,11 +45,16 @@ textarea {
 .app-layout {
   display: grid;
   grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
+  height: calc(100vh - 4rem);
+  height: calc(100dvh - 4rem);
   min-height: calc(100vh - 4rem);
   min-height: calc(100dvh - 4rem);
 }
 
 .chat-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: 1.25rem;
   border-right: 1px solid #d8e0ea;
   background: #ffffff;
@@ -61,23 +66,70 @@ textarea {
   font-size: 1rem;
 }
 
+.chat-sidebar-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-sidebar-header button,
+.chat-delete-button,
+.chat-select-button,
+.message-form button {
+  min-height: 2.75rem;
+  border-radius: 0.5rem;
+}
+
+.chat-sidebar-header button,
+.message-form button {
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  color: #ffffff;
+  background: #173b67;
+}
+
 .chat-list {
+  flex: 1;
   display: grid;
   gap: 0.5rem;
+  align-content: start;
+  min-height: 0;
   padding: 0;
   margin: 1rem 0 0;
   list-style: none;
+  overflow-y: auto;
 }
 
 .chat-list-item {
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  color: #405168;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: stretch;
 }
 
-.chat-list-item.is-active {
+.chat-select-button {
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  color: #405168;
+  text-align: left;
+  overflow-wrap: anywhere;
+  background: transparent;
+}
+
+.chat-delete-button {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #bd3b3b;
+  color: #9f2525;
+  background: #ffffff;
+}
+
+.chat-list-item.is-active .chat-select-button {
   color: #173b67;
   background: #e8f1fc;
+  border-color: #8eb6e5;
   font-weight: 600;
 }
 
@@ -85,7 +137,9 @@ textarea {
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-height: 0;
   padding: 1.5rem 2rem;
+  overflow: hidden;
 }
 
 .chat-header {
@@ -106,9 +160,12 @@ textarea {
 }
 
 .message-list {
+  flex: 1;
   display: grid;
   gap: 1rem;
+  min-height: 0;
   padding: 1.5rem 0;
+  overflow-y: auto;
 }
 
 .message {
@@ -157,18 +214,21 @@ textarea {
   resize: vertical;
 }
 
-.message-form button {
-  padding: 0.75rem 1rem;
-  border: 0;
-  border-radius: 0.5rem;
-  color: #ffffff;
-  background: #173b67;
-}
-
+.chat-sidebar button:disabled,
 .message-form button:disabled,
 .message-form textarea:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+button:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #e58c2c;
+  outline-offset: 2px;
 }
 
 .visually-hidden {
@@ -190,12 +250,20 @@ textarea {
 
   .app-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100dvh - 4rem);
+    min-height: calc(100vh - 4rem);
   }
 
   .chat-sidebar {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
     border-right: 0;
     border-bottom: 1px solid #d8e0ea;
+  }
+
+  .chat-list {
+    max-height: min(9rem, 22dvh);
+    margin-top: 0.75rem;
   }
 
   .chat-panel {
