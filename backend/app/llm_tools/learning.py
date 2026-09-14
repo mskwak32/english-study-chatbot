@@ -3,16 +3,37 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from app.agent.protocol import SaveReviewWordToolCall
-from app.database import save_review_word
+from app.agent.protocol import (
+    CompleteInitialAssessmentToolCall,
+    SaveReviewWordToolCall,
+)
+from app.database import (
+    LearningProfileError,
+    add_proficiency_test,
+    get_learning_profile,
+    list_proficiency_tests,
+    save_learning_profile,
+    save_review_word,
+)
 
 
 @dataclass(frozen=True)
 class ToolResult:
-    """도구 호출 실행 결과를 LLM에 전달하기 위한 객체입니다."""
+    """실행한 도구 이름과 LLM에 알려 줄 저장 결과를 담습니다."""
 
     name: str
     content: dict[str, object]
+
+
+def _level_for_initial_assessment_score(score_earned: int) -> str:
+    """14점 만점 점수를 고정 기준에 따라 A1, A2 또는 B1으로 변환합니다."""
+    if 0 <= score_earned <= 6:
+        return "A1"
+    if 7 <= score_earned <= 10:
+        return "A2"
+    if 11 <= score_earned <= 14:
+        return "B1"
+    raise LearningProfileError("초기 실력 테스트 점수는 0점에서 14점 사이여야 합니다.")
 
 
 def execute_save_review_word(
@@ -42,5 +63,65 @@ def execute_save_review_word(
             "saved": True,
             "review_word_id": review_word.id,
             "term": review_word.term,
+        },
+    )
+
+
+def execute_complete_initial_assessment(
+    database_url: str,
+    *,
+    tool_call: CompleteInitialAssessmentToolCall,
+    study_date: date,
+    current_time: datetime,
+) -> ToolResult:
+    """LLM이 제출한 초기 테스트 결과로 첫 프로필과 테스트 이력을 만듭니다.
+
+    점수로 계산한 레벨과 제출한 레벨이 다르면 저장하지 않습니다. 기존 프로필이나
+    테스트 이력이 있어도 덮어쓰지 않고 오류를 발생시킵니다.
+    """
+    arguments = tool_call.arguments
+    expected_level = _level_for_initial_assessment_score(arguments.score_earned)
+    if arguments.final_level != expected_level:
+        raise LearningProfileError(
+            "초기 실력 테스트의 최종 레벨이 서버 점수 기준과 일치하지 않습니다."
+        )
+
+    if get_learning_profile(database_url) is not None or list_proficiency_tests(
+        database_url
+    ):
+        raise LearningProfileError(
+            "이미 학습 프로필 또는 초기 실력 테스트 결과가 있어 덮어쓸 수 없습니다."
+        )
+
+    profile = save_learning_profile(
+        database_url,
+        target_language="영어",
+        session_started_on=study_date,
+        current_level=arguments.final_level,
+        level_updated_on=study_date,
+        level_note=arguments.level_note,
+        strengths=arguments.strengths,
+        weaknesses=arguments.weaknesses,
+        updated_at=current_time,
+    )
+    proficiency_test = add_proficiency_test(
+        database_url,
+        tested_on=study_date,
+        final_level=arguments.final_level,
+        score_earned=arguments.score_earned,
+        score_total=14,
+        vocabulary_result=arguments.vocabulary_result,
+        grammar_result=arguments.grammar_result,
+        reading_result=arguments.reading_result,
+        self_expression_result=arguments.self_expression_result,
+        created_at=current_time,
+    )
+
+    return ToolResult(
+        name=tool_call.action,
+        content={
+            "saved": True,
+            "current_level": profile.current_level,
+            "proficiency_test_id": proficiency_test.id,
         },
     )

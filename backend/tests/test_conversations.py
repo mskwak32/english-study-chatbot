@@ -4,7 +4,6 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
-
 from app.database import (
     get_or_create_default_chat,
     initialize_database,

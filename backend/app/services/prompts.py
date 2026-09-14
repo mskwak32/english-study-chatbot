@@ -18,6 +18,8 @@ from app.llm import LLMMessage
 
 REFERENCE_CONTEXT_CHARACTER_LIMIT = 12_000
 USER_MESSAGE_CHARACTER_LIMIT = 4_000
+INITIAL_LEARNING_TRIGGER = "영어 공부 시작"
+PROFILE_SETUP_TRIGGER = "학습 프로필 만들기"
 
 
 class PromptError(ValueError):
@@ -170,3 +172,27 @@ def build_chat_prompt(
     )
 
     return prompt
+
+
+def build_initial_chat_prompt(
+    database_url: str,
+    agent_instructions: str,
+    study_guidelines: str,
+    trigger: Literal["영어 공부 시작", "학습 프로필 만들기"] = INITIAL_LEARNING_TRIGGER,
+) -> list[LLMMessage]:
+    """학습 자료와 시작 신호를 조합해 첫 튜터 답변을 요청할 메시지를 만듭니다.
+
+    시작 신호는 일반 학습과 초기 실력 테스트 중 무엇을 시작할지 LLM에 알려 주는
+    내부 입력이며, 화면이나 채팅 기록에는 남지 않습니다.
+    """
+    return [
+        LLMMessage(
+            role="system",
+            content=_build_reference_context(
+                database_url,
+                agent_instructions,
+                study_guidelines,
+            ),
+        ),
+        LLMMessage(role="user", content=trigger),
+    ]

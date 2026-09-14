@@ -5,10 +5,9 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app import main
 from app.database import add_study_record, save_learning_profile, save_review_word
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture

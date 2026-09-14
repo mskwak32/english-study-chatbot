@@ -3,15 +3,18 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app import main
-from app.database import get_or_create_default_chat, list_messages
+from app.database import (
+    get_or_create_default_chat,
+    list_messages,
+    save_learning_profile,
+)
 from app.llm import (
     LLMConnectionError,
     LLMMessage,
     LLMStructuredResponse,
 )
+from fastapi.testclient import TestClient
 
 
 class FakeLLMClient:
@@ -107,6 +110,80 @@ def test_create_chat_message_returns_assistant_reply(
     assert response.json()["role"] == "assistant"
     assert response.json()["content"] == "오늘은 과거형을 연습하겠습니다."
     assert response.json()["sequence"] == 2
+
+
+def test_start_today_chat_saves_one_tutor_greeting_without_internal_trigger(
+    configured_client: tuple[TestClient, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """오늘 학습 시작은 첫 안내만 저장하고 다시 시작해도 중복 생성하지 않습니다."""
+    client, database_url = configured_client
+    save_learning_profile(
+        database_url,
+        current_level="A1",
+        session_started_on=date(2026, 9, 10),
+        level_updated_on=date(2026, 9, 10),
+        updated_at=datetime(2026, 9, 10, tzinfo=UTC),
+    )
+    llm_client = FakeLLMClient(
+        {
+            "action": "reply",
+            "message": "안녕하세요. 오늘의 영어 학습을 시작하겠습니다.",
+        }
+    )
+    monkeypatch.setattr(main.app.state, "llm_client", llm_client)
+
+    first_response = client.post("/chats/today/start")
+    second_response = client.post("/chats/today/start")
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert first_response.json() == second_response.json()
+    assert len(llm_client.calls) == 1
+    assert llm_client.calls[0][-1] == LLMMessage(role="user", content="영어 공부 시작")
+    messages = list_messages(database_url, first_response.json()["id"])
+    assert [
+        (message.role, message.content, message.sequence) for message in messages
+    ] == [
+        (
+            "assistant",
+            "안녕하세요. 오늘의 영어 학습을 시작하겠습니다.",
+            1,
+        )
+    ]
+
+
+def test_profile_setup_starts_once_before_a_learning_profile_exists(
+    configured_client: tuple[TestClient, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """프로필이 없으면 일반 학습 대신 초기 테스트 첫 문제만 시작합니다."""
+    client, database_url = configured_client
+    llm_client = FakeLLMClient(
+        {
+            "action": "reply",
+            "message": "현재 수준을 확인하겠습니다. 첫 어휘 문제입니다.",
+        }
+    )
+    monkeypatch.setattr(main.app.state, "llm_client", llm_client)
+
+    blocked_response = client.post("/chats/today/start")
+    first_response = client.post("/chats/today/profile-setup")
+    second_response = client.post("/chats/today/profile-setup")
+
+    assert blocked_response.status_code == 422
+    assert blocked_response.json() == {"detail": "학습 프로필을 먼저 만들어 주세요."}
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert first_response.json() == second_response.json()
+    assert len(llm_client.calls) == 1
+    assert llm_client.calls[0][-1] == LLMMessage(
+        role="user", content="학습 프로필 만들기"
+    )
+    messages = list_messages(database_url, first_response.json()["id"])
+    assert [
+        (message.role, message.content, message.sequence) for message in messages
+    ] == [("assistant", "현재 수준을 확인하겠습니다. 첫 어휘 문제입니다.", 1)]
 
 
 def test_create_chat_message_returns_404_before_calling_llm(

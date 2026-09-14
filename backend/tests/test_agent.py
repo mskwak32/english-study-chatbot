@@ -4,14 +4,15 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
-
 from app.agent import (
     AgentLoopError,
     run_agent,
 )
 from app.agent.protocol import AGENT_RESPONSE_SCHEMA
 from app.database import (
+    get_learning_profile,
     initialize_database,
+    list_proficiency_tests,
     list_review_words,
 )
 from app.llm import (
@@ -149,6 +150,51 @@ def test_run_agent_executes_tool_and_requests_final_reply(
 
     assert len(review_words) == 1
     assert review_words[0].term == "hesitate"
+
+
+def test_run_agent_completes_initial_assessment_before_returning_reply(
+    tmp_path: Path,
+) -> None:
+    """초기 테스트 완료 도구는 저장 결과를 본 뒤 최종 안내를 반환합니다."""
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    llm_client = FakeLLMClient(
+        responses=[
+            {
+                "action": "complete_initial_assessment",
+                "arguments": {
+                    "final_level": "B1",
+                    "score_earned": 12,
+                    "vocabulary_result": "어휘 결과",
+                    "grammar_result": "문법 결과",
+                    "reading_result": "독해 결과",
+                    "self_expression_result": "자기표현 결과",
+                    "strengths": "문장 이해",
+                    "weaknesses": "시제 정확성",
+                    "level_note": "초기 테스트 12/14점",
+                },
+            },
+            {
+                "action": "reply",
+                "message": "초기 실력 테스트를 완료했습니다.",
+            },
+        ]
+    )
+
+    reply = asyncio.run(
+        run_agent(
+            llm_client,
+            messages=[LLMMessage(role="user", content="마지막 답변입니다.")],
+            database_url=database_url,
+            study_date=date(2026, 9, 10),
+            current_time=datetime(2026, 9, 10, tzinfo=UTC),
+        )
+    )
+
+    assert reply == "초기 실력 테스트를 완료했습니다."
+    assert len(llm_client.calls) == 2
+    assert get_learning_profile(database_url) is not None
+    assert [test.final_level for test in list_proficiency_tests(database_url)] == ["B1"]
 
 
 def test_run_agent_stops_before_exceeding_tool_call_limit(

@@ -73,7 +73,19 @@ export function createAdditionalChat(fetchFunction = globalThis.fetch) {
  * @returns {Promise<object>} 오늘의 기본 학습 채팅입니다.
  */
 export function startTodayChat(fetchFunction = globalThis.fetch) {
-  return requestJson(fetchFunction, "/chats/today", { method: "POST" });
+  return requestJson(fetchFunction, "/chats/today/start", { method: "POST" });
+}
+
+/**
+ * 초기 실력 테스트를 시작하고 튜터의 첫 문제를 포함한 오늘 채팅을 반환합니다.
+ *
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<object>} 초기 실력 테스트를 시작한 오늘의 기본 채팅입니다.
+ */
+export function startProfileSetupChat(fetchFunction = globalThis.fetch) {
+  return requestJson(fetchFunction, "/chats/today/profile-setup", {
+    method: "POST",
+  });
 }
 
 /**

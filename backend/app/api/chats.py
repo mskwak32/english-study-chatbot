@@ -2,7 +2,7 @@
 
 import logging
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Never
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, StringConstraints
@@ -13,6 +13,7 @@ from app.config import settings
 from app.database import (
     ChatError,
     DatabaseError,
+    LearningProfileError,
     MessageError,
     ReviewWordError,
     delete_chat,
@@ -28,6 +29,8 @@ from app.services import (
     get_or_create_today_chat,
     get_today_chat,
     respond_to_chat,
+    start_profile_setup,
+    start_today_learning,
 )
 from app.services.prompts import USER_MESSAGE_CHARACTER_LIMIT
 
@@ -115,6 +118,112 @@ def create_today_chat() -> ChatResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="오늘의 학습 채팅을 준비하지 못했습니다.",
+        ) from error
+
+    return ChatResponse.model_validate(chat)
+
+
+def _raise_conversation_http_error(error: Exception) -> Never:
+    """모델 연결, 응답 형식, 입력 오류를 알맞은 HTTP 상태 코드로 변환합니다."""
+    if isinstance(error, (LLMConnectionError, ModelUnavailableError)):
+        logger.info("LLM을 사용할 수 없습니다: %s", error)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="현재 영어 학습 모델에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        ) from error
+
+    if isinstance(error, (LLMResponseError, AgentResponseError, AgentLoopError)):
+        logger.warning("LLM 응답을 처리하지 못했습니다.", exc_info=error)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="영어 학습 모델의 응답을 처리하지 못했습니다. 다시 시도해 주세요.",
+        ) from error
+
+    if isinstance(error, ConversationError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)
+        ) from error
+
+    raise TypeError(f"지원하지 않는 대화 오류입니다: {type(error).__name__}")
+
+
+@router.post(
+    "/today/start",
+    response_model=ChatResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def start_today_chat(request: Request) -> ChatResponse:
+    """학습 프로필이 있으면 오늘 채팅을 열고 빈 채팅에 첫 튜터 답변을 만듭니다."""
+    try:
+        chat = await start_today_learning(
+            request.app.state.llm_client,
+            database_url=settings.database_url,
+            agent_instructions=request.app.state.agent_instructions,
+            study_guidelines=request.app.state.study_guidelines,
+            timezone_name=settings.timezone,
+        )
+    except (
+        LLMConnectionError,
+        ModelUnavailableError,
+        LLMResponseError,
+        AgentResponseError,
+        AgentLoopError,
+        ConversationError,
+    ) as error:
+        _raise_conversation_http_error(error)
+    except (
+        ChatError,
+        DatabaseError,
+        LearningProfileError,
+        MessageError,
+        PromptError,
+        ReviewWordError,
+    ) as error:
+        logger.exception("오늘의 학습을 시작하지 못했습니다.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="오늘의 학습을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        ) from error
+
+    return ChatResponse.model_validate(chat)
+
+
+@router.post(
+    "/today/profile-setup",
+    response_model=ChatResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def start_profile_setup_chat(request: Request) -> ChatResponse:
+    """프로필이 없는 학습자의 오늘 채팅을 열고 빈 채팅에 첫 테스트 문제를 만듭니다."""
+    try:
+        chat = await start_profile_setup(
+            request.app.state.llm_client,
+            database_url=settings.database_url,
+            agent_instructions=request.app.state.agent_instructions,
+            study_guidelines=request.app.state.study_guidelines,
+            timezone_name=settings.timezone,
+        )
+    except (
+        LLMConnectionError,
+        ModelUnavailableError,
+        LLMResponseError,
+        AgentResponseError,
+        AgentLoopError,
+        ConversationError,
+    ) as error:
+        _raise_conversation_http_error(error)
+    except (
+        ChatError,
+        DatabaseError,
+        LearningProfileError,
+        MessageError,
+        PromptError,
+        ReviewWordError,
+    ) as error:
+        logger.exception("초기 실력 테스트를 시작하지 못했습니다.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="초기 실력 테스트를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         ) from error
 
     return ChatResponse.model_validate(chat)
@@ -208,7 +317,7 @@ def remove_chat(chat_id: int) -> Response:
 async def create_chat_message(
     chat_id: int, body: ChatMessageRequest, request: Request
 ) -> MessageResponse:
-    """사용자 메시지를 처리하고 저장된 assistant 응답을 반환합니다."""
+    """사용자 메시지와 그에 대한 튜터 답변을 저장하고 튜터 메시지를 반환합니다."""
     chat = get_chat(settings.database_url, chat_id)
 
     if chat is None:
@@ -226,23 +335,22 @@ async def create_chat_message(
             study_guidelines=request.app.state.study_guidelines,
             timezone_name=settings.timezone,
         )
-    except (LLMConnectionError, ModelUnavailableError) as error:
-        logger.info("LLM을 사용할 수 없습니다: %s", error)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="현재 영어 학습 모델에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
-        ) from error
-    except (LLMResponseError, AgentResponseError, AgentLoopError) as error:
-        logger.warning("LLM 응답을 처리하지 못했습니다.", exc_info=error)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="영어 학습 모델의 응답을 처리하지 못했습니다. 다시 시도해 주세요.",
-        ) from error
-    except ConversationError as error:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)
-        ) from error
-    except (DatabaseError, MessageError, PromptError, ReviewWordError) as error:
+    except (
+        LLMConnectionError,
+        ModelUnavailableError,
+        LLMResponseError,
+        AgentResponseError,
+        AgentLoopError,
+        ConversationError,
+    ) as error:
+        _raise_conversation_http_error(error)
+    except (
+        DatabaseError,
+        LearningProfileError,
+        MessageError,
+        PromptError,
+        ReviewWordError,
+    ) as error:
         logger.exception("대화 요청 처리에 실패했습니다.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

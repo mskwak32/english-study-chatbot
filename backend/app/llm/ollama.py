@@ -122,7 +122,7 @@ class OllamaClient:
             ],
             # MVP에서는 Agent가 완성된 구조화 응답을 검증한 뒤 반환하므로 스트리밍을 사용하지 않습니다.
             "stream": False,
-            "format": response_schema,
+            "format": _schema_for_ollama(response_schema),
             # 유휴 시간이 짧은 학습 세션에서 모델 재로딩을 줄입니다.
             "keep_alive": self._keep_alive,
         }
@@ -195,3 +195,31 @@ class OllamaClient:
             raise LLMResponseError(f"{response_name}은 JSON 객체여야 합니다.")
 
         return data
+
+
+def _schema_for_ollama(response_schema: dict[str, object]) -> dict[str, object]:
+    """Ollama의 문법 변환기 오류를 피하도록 출력 스키마에서 길이 제한만 제거합니다.
+
+    원본 스키마는 Python에서 모델 응답을 검증할 때 그대로 사용합니다. 따라서 이 함수는
+    Ollama에 전달할 복사본만 만들며 호출자가 전달한 스키마를 변경하지 않습니다.
+    """
+    sanitized_schema = _remove_max_length(response_schema)
+
+    if not isinstance(sanitized_schema, dict):
+        raise TypeError("Ollama 출력 스키마는 JSON 객체여야 합니다.")
+
+    return sanitized_schema
+
+
+def _remove_max_length(value: object) -> object:
+    """JSON Schema 사본에서 중첩 위치와 관계없이 ``maxLength``를 제거합니다."""
+    if isinstance(value, dict):
+        return {
+            key: _remove_max_length(item)
+            for key, item in value.items()
+            if key != "maxLength"
+        }
+    if isinstance(value, list):
+        return [_remove_max_length(item) for item in value]
+
+    return value

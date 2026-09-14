@@ -7,16 +7,22 @@ from .chats import (
     create_today_additional_chat,
     get_or_create_today_chat,
     get_today_chat,
+    start_profile_setup,
+    start_today_learning,
 )
-from .conversations import ConversationError, respond_to_chat
-from .prompts import PromptError, build_chat_prompt
+from .conversations import ConversationError, respond_to_chat, respond_to_initial_chat
+from .prompts import PromptError, build_chat_prompt, build_initial_chat_prompt
 
 __all__ = [
     "ConversationError",
     "PromptError",
     "build_chat_prompt",
+    "build_initial_chat_prompt",
     "create_today_additional_chat",
     "get_or_create_today_chat",
     "get_today_chat",
     "respond_to_chat",
+    "respond_to_initial_chat",
+    "start_profile_setup",
+    "start_today_learning",
 ]

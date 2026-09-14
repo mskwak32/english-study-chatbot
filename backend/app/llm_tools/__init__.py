@@ -2,10 +2,12 @@
 
 from .learning import (
     ToolResult,
+    execute_complete_initial_assessment,
     execute_save_review_word,
 )
 
 __all__ = [
     "ToolResult",
+    "execute_complete_initial_assessment",
     "execute_save_review_word",
 ]

@@ -65,9 +65,44 @@ class SaveReviewWordToolCall(_StrictBaseModel):
     arguments: SaveReviewWordArguments
 
 
+class CompleteInitialAssessmentArguments(_StrictBaseModel):
+    """LLM이 초기 실력 테스트를 마친 뒤 제출할 평가 항목을 검증합니다."""
+
+    final_level: Literal["A1", "A2", "B1"]
+    score_earned: Annotated[int, Field(ge=0, le=14, strict=True)]
+    vocabulary_result: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)
+    ]
+    grammar_result: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)
+    ]
+    reading_result: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)
+    ]
+    self_expression_result: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)
+    ]
+    strengths: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)
+    ]
+    weaknesses: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)
+    ]
+    level_note: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)
+    ]
+
+
+class CompleteInitialAssessmentToolCall(_StrictBaseModel):
+    """검증된 초기 테스트 결과로 학습 프로필 생성을 요청합니다."""
+
+    action: Literal["complete_initial_assessment"]
+    arguments: CompleteInitialAssessmentArguments
+
+
 # action 값에 따라 최종 답변과 복습 단어 저장 요청 중 검증할 모델을 선택합니다.
 AgentResponse = Annotated[
-    AgentReply | SaveReviewWordToolCall,
+    AgentReply | SaveReviewWordToolCall | CompleteInitialAssessmentToolCall,
     Field(discriminator="action"),
 ]
 

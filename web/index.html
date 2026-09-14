@@ -38,14 +38,33 @@
         <section
           id="start-learning"
           class="start-learning"
-          aria-labelledby="start-learning-title"
+          aria-label="학습 시작 안내"
           hidden
         >
-          <h3 id="start-learning-title">오늘의 학습을 아직 시작하지 않았습니다.</h3>
-          <p>버튼을 눌러 오늘의 기본 학습을 시작해 주세요.</p>
-          <button id="start-learning-button" type="button">
-            오늘의 학습 시작
-          </button>
+          <div id="today-learning-start" class="start-learning-content">
+            <h3>오늘의 학습을 아직 시작하지 않았습니다.</h3>
+            <p>버튼을 눌러 오늘의 기본 학습을 시작해 주세요.</p>
+            <button id="start-learning-button" type="button">
+              오늘의 학습 시작
+            </button>
+          </div>
+
+          <div id="profile-setup" class="start-learning-content" hidden>
+            <h3>학습 프로필을 만들어 보세요</h3>
+            <p>학습 프로필을 만들기 위한 초기 실력 테스트를 진행합니다.</p>
+            <section class="profile-setup-outline" aria-labelledby="profile-setup-outline-title">
+              <h4 id="profile-setup-outline-title">테스트 구성</h4>
+              <ul>
+                <li>어휘 5문제</li>
+                <li>문법 5문제</li>
+                <li>독해 지문 1개와 문제 3개</li>
+                <li>자기표현 1문제</li>
+              </ul>
+            </section>
+            <button id="profile-setup-button" type="button">
+              학습 프로필 만들기
+            </button>
+          </div>
           <p
             id="start-learning-status"
             class="status-message"

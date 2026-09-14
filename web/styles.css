@@ -227,17 +227,28 @@ textarea {
   text-align: center;
 }
 
-.start-learning h3,
-.start-learning p {
+.start-learning-content {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  width: min(100%, 32rem);
+}
+
+.start-learning-content[hidden] {
+  display: none;
+}
+
+.start-learning-content h3,
+.start-learning-content p {
   margin: 0;
 }
 
-.start-learning h3 {
+.start-learning-content h3 {
   color: #405168;
   font-size: 1.1rem;
 }
 
-.start-learning p {
+.start-learning-content p {
   line-height: 1.6;
 }
 
@@ -248,6 +259,29 @@ textarea {
   border-radius: 0.5rem;
   color: #ffffff;
   background: #173b67;
+}
+
+.profile-setup-outline {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #d8e0ea;
+  border-radius: 0.75rem;
+  color: #405168;
+  text-align: left;
+  background: #ffffff;
+}
+
+.profile-setup-outline h4 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.profile-setup-outline ul {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 1.25rem;
+  margin: 0;
+  line-height: 1.5;
 }
 
 .message {
@@ -261,13 +295,6 @@ textarea {
 .message.is-user {
   margin-left: auto;
   background: #dcecff;
-}
-
-.message-author {
-  margin: 0 0 0.4rem;
-  color: #405168;
-  font-size: 0.875rem;
-  font-weight: 700;
 }
 
 .message-content {
@@ -298,7 +325,8 @@ textarea {
 
 .chat-sidebar button:disabled,
 .message-form button:disabled,
-.message-form textarea:disabled {
+.message-form textarea:disabled,
+.start-learning button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }

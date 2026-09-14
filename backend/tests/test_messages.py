@@ -5,7 +5,6 @@ from threading import Barrier
 from zoneinfo import ZoneInfo
 
 import pytest
-
 from app.database import (
     MessageError,
     add_message,

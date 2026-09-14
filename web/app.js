@@ -4,7 +4,9 @@ import {
   loadChatMessages,
   loadChats,
   loadInitialState,
+  loadLearningProfile,
   sendChatMessage,
+  startProfileSetupChat,
   startTodayChat,
 } from "/api.js";
 import { deleteConfirmedChat } from "/chat-management.js";
@@ -22,7 +24,10 @@ const messageList = document.querySelector("#message-list");
 const loadingStatus = document.querySelector("#loading-status");
 const emptyMessage = document.querySelector("#empty-message");
 const startLearning = document.querySelector("#start-learning");
+const todayLearningStart = document.querySelector("#today-learning-start");
 const startLearningButton = document.querySelector("#start-learning-button");
+const profileSetup = document.querySelector("#profile-setup");
+const profileSetupButton = document.querySelector("#profile-setup-button");
 const startLearningStatus = document.querySelector("#start-learning-status");
 const messageForm = document.querySelector("#message-form");
 const messageInput = document.querySelector("#message-input");
@@ -31,6 +36,7 @@ const sendButton = document.querySelector("#send-button");
 let activeChatId = null;
 let chats = [];
 let hasTodayChat = false;
+let hasLearningProfile = false;
 let isMessagePending = false;
 let isManagementPending = false;
 
@@ -75,7 +81,6 @@ function createChatListItem(chat, selectedChatId) {
  */
 function createMessageElement(message) {
   const article = document.createElement("article");
-  const author = document.createElement("p");
   const content = document.createElement("p");
 
   article.className = "message";
@@ -84,13 +89,10 @@ function createMessageElement(message) {
     article.classList.add("is-user");
   }
 
-  author.className = "message-author";
-  author.textContent = message.role === "user" ? "나" : "영어 튜터";
-
   content.className = "message-content";
   content.textContent = message.content;
 
-  article.append(author, content);
+  article.append(content);
 
   return article;
 }
@@ -116,6 +118,8 @@ function renderChatState({ activeChat, chats: nextChats, messages }) {
   messageList.hidden = !hasActiveChat;
   emptyMessage.hidden = !hasActiveChat || messages.length > 0;
   startLearning.hidden = hasActiveChat;
+  todayLearningStart.hidden = !hasLearningProfile;
+  profileSetup.hidden = hasLearningProfile;
   startLearningStatus.hidden = true;
   startLearningStatus.classList.remove("is-error");
   loadingStatus.hidden = true;
@@ -138,6 +142,7 @@ function syncControlState() {
 
   createChatButton.disabled = isPending || !hasTodayChat;
   startLearningButton.disabled = isPending;
+  profileSetupButton.disabled = isPending;
   chatList.querySelectorAll("button").forEach((button) => {
     button.disabled = isPending;
   });
@@ -254,14 +259,14 @@ async function createChat() {
   }
 }
 
-/** 오늘의 기본 학습을 만들고 바로 해당 대화 화면을 엽니다. */
+/** 오늘의 기본 학습을 시작하고 튜터의 첫 안내가 있는 대화 화면을 엽니다. */
 async function startTodayLearning() {
   if (isMessagePending || isManagementPending || hasTodayChat) {
     return;
   }
 
   isManagementPending = true;
-  startLearningStatus.textContent = "오늘의 학습을 시작하는 중입니다.";
+  startLearningStatus.textContent = "영어 튜터의 첫 안내를 준비하는 중입니다.";
   startLearningStatus.classList.remove("is-error");
   startLearningStatus.hidden = false;
   syncControlState();
@@ -279,6 +284,39 @@ async function startTodayLearning() {
     console.error(error);
     startLearningStatus.textContent =
       "오늘의 학습을 시작하지 못했습니다. 다시 시도해 주세요.";
+    startLearningStatus.classList.add("is-error");
+    startLearningStatus.hidden = false;
+  } finally {
+    isManagementPending = false;
+    syncControlState();
+  }
+}
+
+/** 초기 실력 테스트를 시작하고 튜터의 첫 문제를 포함한 대화 화면을 엽니다. */
+async function startProfileSetupLearning() {
+  if (isMessagePending || isManagementPending || hasTodayChat) {
+    return;
+  }
+
+  isManagementPending = true;
+  startLearningStatus.textContent = "초기 실력 테스트의 첫 문제를 준비하는 중입니다.";
+  startLearningStatus.classList.remove("is-error");
+  startLearningStatus.hidden = false;
+  syncControlState();
+
+  try {
+    const chat = await startProfileSetupChat();
+    const [nextChats, messages] = await Promise.all([
+      loadChats(),
+      loadChatMessages(chat.id),
+    ]);
+
+    hasTodayChat = true;
+    renderChatState({ activeChat: chat, chats: nextChats, messages });
+  } catch (error) {
+    console.error(error);
+    startLearningStatus.textContent =
+      "학습 프로필 만들기를 시작하지 못했습니다. 다시 시도해 주세요.";
     startLearningStatus.classList.add("is-error");
     startLearningStatus.hidden = false;
   } finally {
@@ -313,8 +351,12 @@ async function removeChat(chat) {
       return;
     }
 
-    const initialState = await loadInitialState();
+    const [initialState, learningProfile] = await Promise.all([
+      loadInitialState(),
+      loadLearningProfile(),
+    ]);
     hasTodayChat = initialState.activeChat !== null;
+    hasLearningProfile = learningProfile !== null;
     renderChatState(initialState);
   } catch (error) {
     showManagementError(
@@ -360,6 +402,7 @@ messageForm.addEventListener("submit", async (event) => {
 
 createChatButton.addEventListener("click", createChat);
 startLearningButton.addEventListener("click", startTodayLearning);
+profileSetupButton.addEventListener("click", startProfileSetupLearning);
 
 messageInput.addEventListener("keydown", (event) => {
   const hasCoarsePointer =
@@ -376,9 +419,13 @@ messageInput.addEventListener("keydown", (event) => {
  */
 async function startApplication() {
   try {
-    const initialState = await loadInitialState();
+    const [initialState, learningProfile] = await Promise.all([
+      loadInitialState(),
+      loadLearningProfile(),
+    ]);
 
     hasTodayChat = initialState.activeChat !== null;
+    hasLearningProfile = learningProfile !== null;
     renderChatState(initialState);
   } catch (error) {
     console.error(error);

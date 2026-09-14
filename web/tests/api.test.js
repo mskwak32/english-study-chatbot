@@ -11,6 +11,7 @@ import {
   loadReviewWords,
   loadStudyRecords,
   sendChatMessage,
+  startProfileSetupChat,
   startTodayChat,
 } from "../api.js";
 
@@ -140,6 +141,7 @@ test("채팅 관리 API는 same-origin 경로와 HTTP 메서드를 사용한다"
 
   await loadChatMessages(7, fakeFetch);
   await startTodayChat(fakeFetch);
+  await startProfileSetupChat(fakeFetch);
   await createAdditionalChat(fakeFetch);
   await deleteChat(7, fakeFetch);
   await loadChats(fakeFetch);
@@ -150,7 +152,11 @@ test("채팅 관리 API는 same-origin 경로와 HTTP 메서드를 사용한다"
       options: { headers: { Accept: "application/json" } },
     },
     {
-      path: "/chats/today",
+      path: "/chats/today/start",
+      options: { method: "POST", headers: { Accept: "application/json" } },
+    },
+    {
+      path: "/chats/today/profile-setup",
       options: { method: "POST", headers: { Accept: "application/json" } },
     },
     {

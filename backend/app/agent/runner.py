@@ -4,9 +4,19 @@ import json
 from collections.abc import Sequence
 from datetime import date, datetime
 
-from app.agent.protocol import AGENT_RESPONSE_SCHEMA, AgentReply, parse_agent_response
+from app.agent.protocol import (
+    AGENT_RESPONSE_SCHEMA,
+    AgentReply,
+    CompleteInitialAssessmentToolCall,
+    SaveReviewWordToolCall,
+    parse_agent_response,
+)
 from app.llm import LLMClient, LLMMessage
-from app.llm_tools import ToolResult, execute_save_review_word
+from app.llm_tools import (
+    ToolResult,
+    execute_complete_initial_assessment,
+    execute_save_review_word,
+)
 
 
 class AgentLoopError(RuntimeError):
@@ -19,7 +29,7 @@ def _assistant_response_message(content: dict[str, object]) -> LLMMessage:
 
 
 def _tool_result_message(result: ToolResult) -> LLMMessage:
-    """도구 실행 결과와 다음 응답 지침을 LLM 메시지로 전달합니다."""
+    """도구 실행 결과와 다음 행동 지침을 LLM에 보낼 system 메시지로 만듭니다."""
     result_json = json.dumps(
         {"tool": result.name, "result": result.content}, ensure_ascii=False
     )
@@ -44,10 +54,11 @@ async def run_agent(
     current_time: datetime,
     max_tool_calls: int = 3,
 ) -> str:
-    """LLM과 도구를 반복 호출해 최종 답변을 만듭니다.
+    """LLM이 사용자에게 보여줄 최종 답변을 만들 때까지 응답을 처리합니다.
 
-    ``reply``는 즉시 반환합니다. ``save_review_word``는 SQLite에 저장한 뒤
-    LLM을 다시 호출하며, 호출 횟수는 ``max_tool_calls``로 제한합니다.
+    LLM이 ``reply``를 반환하면 답변 문구를 즉시 반환합니다. 도구 호출을
+    반환하면 해당 저장 작업을 실행하고 그 결과를 LLM에 알려 다시 답변을
+    요청합니다. 무한 반복을 막기 위해 도구 실행은 ``max_tool_calls``회로 제한합니다.
     """
     if not messages:
         raise ValueError("Agent에 전달할 메시지는 하나 이상이어야 합니다.")
@@ -73,12 +84,24 @@ async def run_agent(
                 "Agent가 도구 호출 제한 횟수 안에 최종 답변을 만들지 못했습니다."
             )
 
-        result = execute_save_review_word(
-            database_url,
-            tool_call=agent_response,
-            study_date=study_date,
-            current_time=current_time,
-        )
+        if isinstance(agent_response, SaveReviewWordToolCall):
+            result = execute_save_review_word(
+                database_url,
+                tool_call=agent_response,
+                study_date=study_date,
+                current_time=current_time,
+            )
+        elif isinstance(agent_response, CompleteInitialAssessmentToolCall):
+            result = execute_complete_initial_assessment(
+                database_url,
+                tool_call=agent_response,
+                study_date=study_date,
+                current_time=current_time,
+            )
+        else:
+            raise TypeError(
+                f"지원하지 않는 도구 호출입니다: {type(agent_response).__name__}"
+            )
         tool_call_count += 1
 
         # LLM이 자신이 요청했던 도구 호출과 실행 결과를 함께 볼 수 있도록

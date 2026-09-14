@@ -1,10 +1,9 @@
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app import main
 from app.database import connect_database
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture

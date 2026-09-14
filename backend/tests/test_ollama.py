@@ -3,7 +3,6 @@ import json
 
 import httpx
 import pytest
-
 from app.llm import (
     LLMConnectionError,
     LLMMessage,
@@ -153,9 +152,16 @@ def test_chat_structured_sends_schema_and_returns_json_object() -> None:
             },
             "message": {
                 "type": "string",
+                "maxLength": 8_000,
             },
             "arguments": {
                 "type": "object",
+                "properties": {
+                    "assessment": {
+                        "type": "string",
+                        "maxLength": 2_000,
+                    }
+                },
             },
         },
         "required": ["action", "message", "arguments"],
@@ -167,6 +173,27 @@ def test_chat_structured_sends_schema_and_returns_json_object() -> None:
             "term": "hesitate",
             "explanation": "망설이다",
         },
+    }
+    expected_format = {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["reply", "save_review_word"],
+            },
+            "message": {
+                "type": "string",
+            },
+            "arguments": {
+                "type": "object",
+                "properties": {
+                    "assessment": {
+                        "type": "string",
+                    }
+                },
+            },
+        },
+        "required": ["action", "message", "arguments"],
     }
 
     def handle_request(request: httpx.Request) -> httpx.Response:
@@ -185,7 +212,7 @@ def test_chat_structured_sends_schema_and_returns_json_object() -> None:
                 },
             ],
             "stream": False,
-            "format": response_schema,
+            "format": expected_format,
             "keep_alive": "45m",
         }
 
@@ -227,6 +254,13 @@ def test_chat_structured_sends_schema_and_returns_json_object() -> None:
     response = asyncio.run(run_test())
 
     assert response.content == expected_content
+    assert response_schema["properties"]["message"]["maxLength"] == 8_000
+    assert (
+        response_schema["properties"]["arguments"]["properties"]["assessment"][
+            "maxLength"
+        ]
+        == 2_000
+    )
 
 
 def test_chat_structured_rejects_invalid_json_content() -> None:
