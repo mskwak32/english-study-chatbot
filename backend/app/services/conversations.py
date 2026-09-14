@@ -3,7 +3,12 @@
 from datetime import UTC, datetime
 
 from app.agent import run_agent
-from app.database import Message, add_message, list_messages
+from app.database import (
+    Message,
+    add_message,
+    is_initial_assessment_active,
+    list_messages,
+)
 from app.llm import LLMClient
 from app.study_time import study_date_for, to_utc
 
@@ -27,6 +32,7 @@ async def respond_to_chat(
     user_content: str,
     agent_instructions: str,
     study_guidelines: str,
+    initial_assessment_instructions: str,
     timezone_name: str,
     now: datetime | None = None,
 ) -> Message:
@@ -52,8 +58,18 @@ async def respond_to_chat(
     )
 
     conversation_messages = list_messages(database_url, chat_id)
+    prompt_mode = (
+        "initial_assessment"
+        if is_initial_assessment_active(database_url, chat_id)
+        else "learning"
+    )
     prompt = build_chat_prompt(
-        database_url, agent_instructions, study_guidelines, conversation_messages
+        database_url,
+        agent_instructions,
+        study_guidelines,
+        conversation_messages,
+        initial_assessment_instructions=initial_assessment_instructions,
+        mode=prompt_mode,
     )
 
     assistant_content = await run_agent(
@@ -81,6 +97,7 @@ async def respond_to_initial_chat(
     chat_id: int,
     agent_instructions: str,
     study_guidelines: str,
+    initial_assessment_instructions: str,
     timezone_name: str,
     trigger: str = INITIAL_LEARNING_TRIGGER,
     now: datetime | None = None,
@@ -92,11 +109,18 @@ async def respond_to_initial_chat(
     """
     current_time = to_utc(now if now is not None else datetime.now(UTC))
     study_date = study_date_for(current_time, timezone_name)
+    prompt_mode = (
+        "initial_assessment"
+        if is_initial_assessment_active(database_url, chat_id)
+        else "learning"
+    )
     prompt = build_initial_chat_prompt(
         database_url,
         agent_instructions,
         study_guidelines,
         trigger,
+        initial_assessment_instructions=initial_assessment_instructions,
+        mode=prompt_mode,
     )
 
     assistant_content = await run_agent(

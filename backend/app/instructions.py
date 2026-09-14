@@ -4,6 +4,7 @@ from pathlib import Path
 
 AGENT_INSTRUCTIONS_FILENAME = "AGENT.md"
 STUDY_GUIDELINES_FILENAME = "영어_가이드라인.md"
+INITIAL_ASSESSMENT_INSTRUCTIONS_FILENAME = "초기_실력_테스트.md"
 
 
 class InstructionLoadingError(RuntimeError):
@@ -47,8 +48,16 @@ def load_agent_instructions(instructions_path: Path) -> str:
 
 
 def load_study_guidelines(instructions_path: Path) -> str:
-    """초기 테스트, 레벨, 주제 선택에 사용하는 지침을 반환합니다."""
+    """일반 학습 세션의 레벨과 주제 선택 지침을 반환합니다."""
     return _load_required_document(
         instructions_path,
         STUDY_GUIDELINES_FILENAME,
+    )
+
+
+def load_initial_assessment_instructions(instructions_path: Path) -> str:
+    """초기 실력 테스트 세션 전용 지침을 반환합니다."""
+    return _load_required_document(
+        instructions_path,
+        INITIAL_ASSESSMENT_INSTRUCTIONS_FILENAME,
     )

@@ -57,6 +57,7 @@ async def start_today_learning(
     database_url: str,
     agent_instructions: str,
     study_guidelines: str,
+    initial_assessment_instructions: str,
     timezone_name: str,
     now: datetime | None = None,
 ) -> Chat:
@@ -73,6 +74,7 @@ async def start_today_learning(
         database_url=database_url,
         agent_instructions=agent_instructions,
         study_guidelines=study_guidelines,
+        initial_assessment_instructions=initial_assessment_instructions,
         timezone_name=timezone_name,
         now=now,
     )
@@ -84,6 +86,7 @@ async def start_profile_setup(
     database_url: str,
     agent_instructions: str,
     study_guidelines: str,
+    initial_assessment_instructions: str,
     timezone_name: str,
     now: datetime | None = None,
 ) -> Chat:
@@ -104,6 +107,7 @@ async def start_profile_setup(
         database_url=database_url,
         agent_instructions=agent_instructions,
         study_guidelines=study_guidelines,
+        initial_assessment_instructions=initial_assessment_instructions,
         timezone_name=timezone_name,
         trigger=PROFILE_SETUP_TRIGGER,
         initial_assessment=True,
@@ -117,6 +121,7 @@ async def _start_empty_today_chat(
     database_url: str,
     agent_instructions: str,
     study_guidelines: str,
+    initial_assessment_instructions: str,
     timezone_name: str,
     trigger: str = INITIAL_LEARNING_TRIGGER,
     initial_assessment: bool = False,
@@ -138,6 +143,7 @@ async def _start_empty_today_chat(
         chat_id=chat.id,
         agent_instructions=agent_instructions,
         study_guidelines=study_guidelines,
+        initial_assessment_instructions=initial_assessment_instructions,
         timezone_name=timezone_name,
         trigger=trigger,
         now=current_time,

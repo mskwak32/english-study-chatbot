@@ -10,7 +10,8 @@ from app.database import (
     save_learning_profile,
     save_review_word,
 )
-from app.services import PromptError, build_chat_prompt
+from app.services import PromptError, build_chat_prompt, build_initial_chat_prompt
+from app.services.prompts import PROFILE_SETUP_TRIGGER
 
 
 def _prepare_database(tmp_path: Path) -> str:
@@ -40,8 +41,9 @@ def test_build_chat_prompt_uses_empty_learning_state_for_new_user(
     prompt = build_chat_prompt(
         database_url,
         "영어 튜터 지침",
-        "초기 테스트와 주제 로테이션을 적용합니다.",
+        "세션 형식 (총 10분)을 적용합니다.",
         [_message(1, "user", "영어 공부 시작")],
+        initial_assessment_instructions="초기 평가 전용 지침",
     )
 
     assert prompt[0].role == "system"
@@ -49,8 +51,28 @@ def test_build_chat_prompt_uses_empty_learning_state_for_new_user(
     assert "실력 테스트 결과 없음" in prompt[0].content
     assert "복습 단어 없음" in prompt[0].content
     assert "학습 이력 없음" in prompt[0].content
-    assert "초기 테스트와 주제 로테이션" in prompt[0].content
+    assert "세션 형식 (총 10분)" in prompt[0].content
+    assert "초기 평가 전용 지침" not in prompt[0].content
     assert prompt[1].content == "영어 공부 시작"
+
+
+def test_build_initial_chat_prompt_includes_initial_assessment_instructions(
+    tmp_path: Path,
+) -> None:
+    database_url = _prepare_database(tmp_path)
+
+    prompt = build_initial_chat_prompt(
+        database_url,
+        "영어 튜터 지침",
+        "세션 형식 (총 10분)",
+        PROFILE_SETUP_TRIGGER,
+        initial_assessment_instructions="초기 평가 전용 지침",
+        mode="initial_assessment",
+    )
+
+    assert "세션 형식 (총 10분)" not in prompt[0].content
+    assert "초기 평가 전용 지침" in prompt[0].content
+    assert prompt[1].content == PROFILE_SETUP_TRIGGER
 
 
 def test_build_chat_prompt_combines_database_learning_data_and_full_chat(
@@ -107,6 +129,7 @@ def test_build_chat_prompt_combines_database_learning_data_and_full_chat(
         "영어 튜터 지침",
         "초기 테스트와 주제 로테이션을 적용합니다.",
         conversation,
+        initial_assessment_instructions="초기 평가 전용 지침",
     )
 
     system_context = prompt[0].content
@@ -133,6 +156,7 @@ def test_build_chat_prompt_rejects_invalid_current_message(
             "영어 튜터 지침",
             "영어 학습 가이드라인",
             [_message(1, "assistant", "사용자 입력이 아님")],
+            initial_assessment_instructions="초기 평가 전용 지침",
         )
 
     with pytest.raises(PromptError, match="4,000자"):
@@ -141,4 +165,5 @@ def test_build_chat_prompt_rejects_invalid_current_message(
             "영어 튜터 지침",
             "영어 학습 가이드라인",
             [_message(1, "user", "a" * 4_001)],
+            initial_assessment_instructions="초기 평가 전용 지침",
         )

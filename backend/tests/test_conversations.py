@@ -8,6 +8,7 @@ from app.database import (
     get_or_create_default_chat,
     initialize_database,
     list_messages,
+    start_initial_assessment,
 )
 from app.llm import (
     LLMConnectionError,
@@ -93,6 +94,7 @@ def test_respond_to_chat_saves_user_and_assistant_messages(
             user_content="오늘은 무엇을 공부하나요?",
             agent_instructions="당신은 영어 튜터입니다.",
             study_guidelines="학습자의 답변을 기다립니다.",
+            initial_assessment_instructions="초기 평가 전용 지침",
             timezone_name="Asia/Seoul",
             now=datetime(2026, 9, 10, 1, 30, tzinfo=UTC),
         )
@@ -110,6 +112,7 @@ def test_respond_to_chat_saves_user_and_assistant_messages(
     assert [message.sequence for message in messages] == [1, 2]
 
     assert len(llm_client.calls) == 1
+    assert "초기 평가 전용 지침" not in llm_client.calls[0][0].content
     assert llm_client.calls[0][-1] == LLMMessage(
         role="user",
         content="오늘은 무엇을 공부하나요?",
@@ -138,6 +141,7 @@ def test_respond_to_chat_rejects_too_long_message_before_saving(
                 user_content="a" * (USER_MESSAGE_CHARACTER_LIMIT + 1),
                 agent_instructions="당신은 영어 튜터입니다.",
                 study_guidelines="학습자의 답변을 기다립니다.",
+                initial_assessment_instructions="초기 평가 전용 지침",
                 timezone_name="Asia/Seoul",
             )
         )
@@ -166,6 +170,7 @@ def test_respond_to_chat_keeps_user_message_when_model_fails(
                 user_content="오늘 학습을 시작할게요.",
                 agent_instructions="당신은 영어 튜터입니다.",
                 study_guidelines="학습자의 답변을 기다립니다.",
+                initial_assessment_instructions="초기 평가 전용 지침",
                 timezone_name="Asia/Seoul",
                 now=datetime(2026, 9, 10, tzinfo=UTC),
             )
@@ -176,3 +181,32 @@ def test_respond_to_chat_keeps_user_message_when_model_fails(
     assert [(message.role, message.content) for message in messages] == [
         ("user", "오늘 학습을 시작할게요."),
     ]
+
+
+def test_respond_to_chat_includes_initial_assessment_instructions_for_active_session(
+    tmp_path: Path,
+) -> None:
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    chat_id = _create_chat(database_url)
+    start_initial_assessment(database_url, chat_id, datetime(2026, 9, 10, tzinfo=UTC))
+    llm_client = FakeLLMClient(
+        responses=[{"action": "reply", "message": "첫 문제에 답해 주세요."}]
+    )
+
+    asyncio.run(
+        respond_to_chat(
+            llm_client,
+            database_url=database_url,
+            chat_id=chat_id,
+            user_content="선택지 2번입니다.",
+            agent_instructions="당신은 영어 튜터입니다.",
+            study_guidelines="일반 학습 가이드라인",
+            initial_assessment_instructions="초기 평가 전용 지침",
+            timezone_name="Asia/Seoul",
+            now=datetime(2026, 9, 10, tzinfo=UTC),
+        )
+    )
+
+    assert "초기 평가 전용 지침" in llm_client.calls[0][0].content
+    assert "일반 학습 가이드라인" not in llm_client.calls[0][0].content

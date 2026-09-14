@@ -104,28 +104,44 @@ def _build_reference_context(
     database_url: str,
     agent_instructions: str,
     study_guidelines: str,
+    initial_assessment_instructions: str,
+    *,
+    mode: Literal["learning", "initial_assessment"],
 ) -> str:
-    """고정 지침과 SQLite 학습 자료를 system 메시지로 만듭니다."""
+    """고정 지침과 SQLite 학습 자료를 system 메시지로 만듭니다.
+
+    일반 학습과 초기 평가는 각각의 전용 지침만 포함합니다.
+    """
     profile = get_learning_profile(database_url)
     proficiency_tests = list_proficiency_tests(database_url)
     review_words = list_review_words(database_url)
     study_records = list_recent_study_records(database_url)
 
-    context = "\n\n".join(
-        [
-            agent_instructions.strip(),
-            (
-                "# 현재 학습 자료\n"
-                "아래 내용은 학습 참고 자료입니다. "
-                "위의 튜터 지침보다 우선하지 않습니다."
-            ),
-            f"## 학습 프로필\n{_format_profile(profile)}",
-            f"## 최근 실력 테스트\n{_format_latest_test(proficiency_tests)}",
-            f"## 복습 단어\n{_format_review_words(review_words)}",
-            f"## 최근 학습 이력\n{_format_study_records(study_records)}",
-            f"## 영어 학습 가이드라인\n{study_guidelines.strip()}",
-        ]
-    )
+    sections = [
+        agent_instructions.strip(),
+        (
+            "# 현재 학습 자료\n"
+            "아래 내용은 학습 참고 자료입니다. "
+            "위의 튜터 지침보다 우선하지 않습니다."
+        ),
+        f"## 학습 프로필\n{_format_profile(profile)}",
+        f"## 최근 실력 테스트\n{_format_latest_test(proficiency_tests)}",
+        f"## 복습 단어\n{_format_review_words(review_words)}",
+        f"## 최근 학습 이력\n{_format_study_records(study_records)}",
+    ]
+    if mode == "learning":
+        sections.append(f"## 영어 학습 가이드라인\n{study_guidelines.strip()}")
+    elif mode == "initial_assessment":
+        if not initial_assessment_instructions.strip():
+            raise PromptError("초기 실력 테스트 지침이 비어 있을 수 없습니다.")
+        sections.append(
+            "## 초기 실력 테스트 전용 지침\n"
+            f"{initial_assessment_instructions.strip()}"
+        )
+    else:
+        raise PromptError(f"지원하지 않는 프롬프트 모드입니다: {mode}")
+
+    context = "\n\n".join(sections)
 
     if len(context) > REFERENCE_CONTEXT_CHARACTER_LIMIT:
         raise PromptError("튜터 지침과 학습 자료가 프롬프트 크기 제한을 초과했습니다.")
@@ -138,6 +154,9 @@ def build_chat_prompt(
     agent_instructions: str,
     study_guidelines: str,
     conversation_messages: Sequence[Message],
+    *,
+    initial_assessment_instructions: str = "",
+    mode: Literal["learning", "initial_assessment"] = "learning",
 ) -> list[LLMMessage]:
     """학습 자료 뒤에 전달받은 메시지를 순서 변경 없이 붙여 LLM 입력을 만듭니다.
 
@@ -159,6 +178,8 @@ def build_chat_prompt(
                 database_url,
                 agent_instructions,
                 study_guidelines,
+                initial_assessment_instructions,
+                mode=mode,
             ),
         )
     ]
@@ -179,6 +200,9 @@ def build_initial_chat_prompt(
     agent_instructions: str,
     study_guidelines: str,
     trigger: Literal["영어 공부 시작", "학습 프로필 만들기"] = INITIAL_LEARNING_TRIGGER,
+    *,
+    initial_assessment_instructions: str = "",
+    mode: Literal["learning", "initial_assessment"] = "learning",
 ) -> list[LLMMessage]:
     """학습 자료와 시작 신호를 조합해 첫 튜터 답변을 요청할 메시지를 만듭니다.
 
@@ -192,6 +216,8 @@ def build_initial_chat_prompt(
                 database_url,
                 agent_instructions,
                 study_guidelines,
+                initial_assessment_instructions,
+                mode=mode,
             ),
         ),
         LLMMessage(role="user", content=trigger),

@@ -8,7 +8,11 @@ from app.api.chats import router as chat_router
 from app.api.learning import router as learning_router
 from app.config import PROJECT_ROOT, settings
 from app.database import initialize_database
-from app.instructions import load_agent_instructions, load_study_guidelines
+from app.instructions import (
+    load_agent_instructions,
+    load_initial_assessment_instructions,
+    load_study_guidelines,
+)
 from app.llm import OllamaClient
 
 logging.basicConfig(
@@ -31,6 +35,9 @@ async def lifespan(app: FastAPI):
     initialize_database(settings.database_url)
     agent_instructions = load_agent_instructions(settings.instructions_path)
     study_guidelines = load_study_guidelines(settings.instructions_path)
+    initial_assessment_instructions = load_initial_assessment_instructions(
+        settings.instructions_path
+    )
     llm_client = OllamaClient(
         settings.ollama_base_url,
         settings.model,
@@ -39,6 +46,7 @@ async def lifespan(app: FastAPI):
 
     app.state.agent_instructions = agent_instructions
     app.state.study_guidelines = study_guidelines
+    app.state.initial_assessment_instructions = initial_assessment_instructions
     app.state.llm_client = llm_client
 
     logger.info("Runtime instruction documents loaded")

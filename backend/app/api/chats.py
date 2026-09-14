@@ -161,6 +161,9 @@ async def start_today_chat(request: Request) -> ChatResponse:
             database_url=settings.database_url,
             agent_instructions=request.app.state.agent_instructions,
             study_guidelines=request.app.state.study_guidelines,
+            initial_assessment_instructions=(
+                request.app.state.initial_assessment_instructions
+            ),
             timezone_name=settings.timezone,
         )
     except (
@@ -203,6 +206,9 @@ async def start_profile_setup_chat(request: Request) -> ChatResponse:
             database_url=settings.database_url,
             agent_instructions=request.app.state.agent_instructions,
             study_guidelines=request.app.state.study_guidelines,
+            initial_assessment_instructions=(
+                request.app.state.initial_assessment_instructions
+            ),
             timezone_name=settings.timezone,
         )
     except (
@@ -336,6 +342,9 @@ async def create_chat_message(
             user_content=body.content,
             agent_instructions=request.app.state.agent_instructions,
             study_guidelines=request.app.state.study_guidelines,
+            initial_assessment_instructions=(
+                request.app.state.initial_assessment_instructions
+            ),
             timezone_name=settings.timezone,
         )
     except (

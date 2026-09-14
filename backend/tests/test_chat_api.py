@@ -69,6 +69,10 @@ def configured_client(
         "테스트용 학습 가이드라인",
         encoding="utf-8",
     )
+    (instructions_path / "초기_실력_테스트.md").write_text(
+        "테스트용 초기 실력 테스트 지침",
+        encoding="utf-8",
+    )
 
     monkeypatch.setattr(main.settings, "database_url", database_url)
     monkeypatch.setattr(main.settings, "instructions_path", instructions_path)
@@ -181,6 +185,8 @@ def test_profile_setup_starts_once_before_a_learning_profile_exists(
     assert llm_client.calls[0][-1] == LLMMessage(
         role="user", content="학습 프로필 만들기"
     )
+    assert "테스트용 초기 실력 테스트 지침" in llm_client.calls[0][0].content
+    assert "테스트용 학습 가이드라인" not in llm_client.calls[0][0].content
     assert is_initial_assessment_active(database_url, first_response.json()["id"])
     messages = list_messages(database_url, first_response.json()["id"])
     assert [
