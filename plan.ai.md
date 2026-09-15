@@ -28,6 +28,7 @@ Raspberry Pi 5에서 Docker Compose로 실행하고 PC·휴대폰 브라우저�
 | 3. SQLite 채팅 저장 | 완료 | 날짜별 채팅, 메시지, 동시 생성 방지 구현 |
 | 4. Ollama와 Python Agent | 완료 | 구조화 JSON Agent, 학습 데이터 저장, `keep_alive` 구현 |
 | 5. 반응형 Web UI | 완료 | 채팅, 정보 화면, 초기 프로필 생성, 키보드 전송 구현 |
+| 6. Docker Compose와 Raspberry Pi 배포 | 완료 | Agent·Ollama 분리, 영속 저장소, 최소 권한 Agent, 운영 문서화 |
 
 4단계의 Raspberry Pi 측정에서 `gemma3:4b` warm 요청은 첫 응답 0.52~0.53초, 전체 21.19~24.32초였고 최대 RSS는 4.20 GiB였다.
 
@@ -37,19 +38,27 @@ Raspberry Pi 5에서 Docker Compose로 실행하고 PC·휴대폰 브라우저�
 - 초기 테스트 완료 도구의 점수·레벨·답변 수를 서버에서 검증한다.
 - Python 테스트 93개와 Web 테스트 10개를 통과했다. Python 테스트에는 외부 의존성의 폐기 경고 2개가 있다.
 
+### 6단계 검증 결과
+
+- ARM64 Raspberry Pi 5에 Docker Engine과 Docker Compose Plugin을 설치하고 `hello-world` 실행을 확인했다.
+- Agent와 Ollama를 Compose 서비스로 분리했다. Agent는 `8100:8000`으로 LAN에 공개하고, Ollama `11434`는 Compose 내부 네트워크에서만 사용한다.
+- SQLite `./data` bind mount, 읽기 전용 `./instructions` bind mount, Ollama named volume에 데이터·지침·모델을 영속화했다.
+- Agent는 비루트 사용자, 읽기 전용 루트 파일시스템, `/tmp` tmpfs, capability 제거, `no-new-privileges`로 실행한다.
+- 테스트 전용 SQLite DB를 이용해 컨테이너 재생성 뒤 DB·모델 영속성, 운영 DB 분리, 지침 쓰기 차단을 확인했다.
+- 설치·시작·중지·상태·업데이트·LAN 접속·백업·삭제 주의사항을 `docs/operations.md`에 정리했다.
+
 ## 다음 단계
-
-### 6단계 — Docker Compose와 Raspberry Pi 배포
-
-Docker Compose에서 Agent와 Ollama를 분리하고 모델·SQLite·런타임 지침을 영속화한다.
-
-- ARM64 이미지와 최소 권한 컨테이너 구성
-- health check, 재시작 정책, LAN 접속 문서화
-- 컨테이너 재생성 뒤에도 모델·DB·지침 유지 확인
 
 ### 7단계 — 통합 검증과 운영 준비
 
-전체 사용자 흐름, 백업·복구, Ollama 장애 대응, 설치·업데이트·운영 문서를 완성한다.
+전체 사용자 흐름, 백업·복구, Ollama 장애 대응, 설치·업데이트·운영 문서와 CI/CD 배포를 완성한다.
+
+- 기본 브랜치 변경 또는 명시적 릴리스 태그를 계기로 Python·Web 테스트를 실행하고, 통과한 코드만 ARM64 Agent 이미지를 빌드한다.
+- 빌드한 이미지를 레지스트리에 immutable 버전 태그와 digest로 게시한다. `latest` 태그만으로 배포 대상을 식별하지 않는다.
+- Pi의 배포용 Compose 설정은 `build:`가 아닌 게시된 Agent 이미지를 참조한다. Pi에는 Compose 파일, 환경 파일, 런타임 지침, SQLite 데이터만 유지한다.
+- CI/CD는 Pi의 배포 절차를 실행해 새 이미지를 pull하고 Agent만 재생성한다. SQLite bind mount, 런타임 지침, Ollama named volume은 유지해야 한다.
+- 배포 뒤 Agent health check와 LAN API를 확인하고, 실패 시 직전 이미지 digest로 되돌릴 수 있어야 한다.
+- 레지스트리 인증 정보와 Pi 배포 권한은 CI 비밀값으로 관리하며 Git 저장소와 이미지에 포함하지 않는다.
 
 ## MVP 이후 후보
 
@@ -58,3 +67,4 @@ Docker Compose에서 Agent와 Ollama를 분리하고 모델·SQLite·런타임 �
 - 로그인과 다중 사용자 지원
 - 외부 공개 접속 보안
 - 모델 자동 벤치마크와 학습 통계
+- 학습 진도 기록, 레벨 상승/하향에 대한 도구가 없음. 도구를 만들어야 함
