@@ -5,6 +5,15 @@ import {
   createMessageFlow,
   shouldSubmitMessageShortcut,
 } from "../message-flow.js";
+import { scrollMessageListToBottom } from "../message-list.js";
+
+test("메시지 목록은 새 메시지가 추가된 뒤 가장 아래로 이동한다", () => {
+  const messageList = { scrollHeight: 480, scrollTop: 0 };
+
+  scrollMessageListToBottom(messageList);
+
+  assert.equal(messageList.scrollTop, 480);
+});
 
 test("전송 단축키는 수정자, 터치 Enter, 조합 및 줄바꿈 경계를 구분한다", () => {
   assert.equal(

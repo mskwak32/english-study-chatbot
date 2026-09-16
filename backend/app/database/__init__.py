@@ -27,6 +27,7 @@ from .learning_profiles import (
     ProficiencyTest,
     add_level_change,
     add_proficiency_test,
+    change_learning_level,
     get_learning_profile,
     list_level_changes,
     list_proficiency_tests,
@@ -46,6 +47,7 @@ from .study_records import (
     StudyRecordError,
     add_study_record,
     list_recent_study_records,
+    upsert_study_record,
 )
 
 __all__ = [
@@ -67,6 +69,7 @@ __all__ = [
     "add_level_change",
     "add_message",
     "add_proficiency_test",
+    "change_learning_level",
     "add_study_record",
     "can_complete_initial_assessment",
     "connect_database",
@@ -91,4 +94,5 @@ __all__ = [
     "save_learning_profile",
     "save_review_word",
     "start_initial_assessment",
+    "upsert_study_record",
 ]

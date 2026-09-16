@@ -3,9 +3,12 @@ from pathlib import Path
 
 import pytest
 from app.agent.protocol import (
+    ChangeLearningLevelToolCall,
     CompleteInitialAssessmentToolCall,
     SaveReviewWordToolCall,
+    SaveStudyRecordToolCall,
     parse_agent_response,
+    parse_level_change_agent_response,
 )
 from app.database import (
     InitialAssessmentError,
@@ -15,12 +18,17 @@ from app.database import (
     get_or_create_default_chat,
     initialize_database,
     list_proficiency_tests,
+    list_level_changes,
+    list_recent_study_records,
+    save_learning_profile,
     list_review_words,
     start_initial_assessment,
 )
 from app.llm_tools import (
+    execute_change_learning_level,
     execute_complete_initial_assessment,
     execute_save_review_word,
+    execute_save_study_record,
 )
 
 
@@ -89,6 +97,89 @@ def test_execute_save_review_word_uses_server_values(
     assert review_words[0].last_wrong_on == date(2026, 9, 10)
     assert review_words[0].correct_streak == 0
     assert review_words[0].updated_at == current_time
+
+
+def test_execute_save_study_record_uses_server_values_and_chat(
+    tmp_path: Path,
+) -> None:
+    """학습 진도 도구는 현재 채팅과 서버 날짜를 사용해 요약을 저장합니다."""
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    chat = get_or_create_default_chat(
+        database_url,
+        study_date=date(2026, 9, 10),
+        created_at=datetime(2026, 9, 10, tzinfo=UTC),
+    )
+    response = parse_agent_response(
+        {
+            "action": "save_study_record",
+            "arguments": {
+                "topic": "호텔 체크인",
+                "new_words": "reservation",
+                "expression": "I have a reservation.",
+                "notes": "체크인 역할극 완료",
+            },
+        }
+    )
+    assert isinstance(response, SaveStudyRecordToolCall)
+
+    result = execute_save_study_record(
+        database_url,
+        tool_call=response,
+        study_date=date(2026, 9, 10),
+        current_time=datetime(2026, 9, 10, 1, 30, tzinfo=UTC),
+        chat_id=chat.id,
+    )
+
+    assert result.content == {
+        "saved": True,
+        "study_record_id": 1,
+        "topic": "호텔 체크인",
+    }
+    records = list_recent_study_records(database_url)
+    assert [(record.chat_id, record.topic) for record in records] == [
+        (chat.id, "호텔 체크인")
+    ]
+
+
+def test_execute_change_learning_level_updates_current_profile_and_history(
+    tmp_path: Path,
+) -> None:
+    """레벨 변경 도구는 프로필과 변경 이력을 함께 갱신합니다."""
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    save_learning_profile(
+        database_url,
+        current_level="A2",
+        updated_at=datetime(2026, 9, 10, tzinfo=UTC),
+    )
+    response = parse_level_change_agent_response(
+        {
+            "action": "change_learning_level",
+            "arguments": {
+                "new_level": "B1",
+                "reason": "최근 독해와 자유 작문이 안정적입니다.",
+            },
+        }
+    )
+    assert isinstance(response, ChangeLearningLevelToolCall)
+
+    result = execute_change_learning_level(
+        database_url,
+        tool_call=response,
+        study_date=date(2026, 9, 10),
+        current_time=datetime(2026, 9, 10, 1, 30, tzinfo=UTC),
+    )
+
+    assert result.content == {
+        "saved": True,
+        "previous_level": "A2",
+        "current_level": "B1",
+    }
+    profile = get_learning_profile(database_url)
+    assert profile is not None
+    assert profile.current_level == "B1"
+    assert [change.new_level for change in list_level_changes(database_url)] == ["B1"]
 
 
 def test_complete_initial_assessment_saves_validated_profile_and_result(

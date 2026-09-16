@@ -65,6 +65,46 @@ class SaveReviewWordToolCall(_StrictBaseModel):
     arguments: SaveReviewWordArguments
 
 
+class SaveStudyRecordArguments(_StrictBaseModel):
+    """save_study_record 도구 호출에 필요한 학습 요약입니다."""
+
+    topic: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)
+    ]
+    new_words: Annotated[
+        str, StringConstraints(strip_whitespace=True, max_length=2_000)
+    ] = ""
+    expression: Annotated[
+        str, StringConstraints(strip_whitespace=True, max_length=2_000)
+    ] = ""
+    notes: Annotated[
+        str, StringConstraints(strip_whitespace=True, max_length=2_000)
+    ] = ""
+
+
+class SaveStudyRecordToolCall(_StrictBaseModel):
+    """현재 채팅의 학습 진도 저장을 요청합니다."""
+
+    action: Literal["save_study_record"]
+    arguments: SaveStudyRecordArguments
+
+
+class ChangeLearningLevelArguments(_StrictBaseModel):
+    """change_learning_level 도구 호출에 필요한 레벨과 근거입니다."""
+
+    new_level: Literal["A1", "A2", "B1", "B2", "C1", "C2"]
+    reason: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)
+    ]
+
+
+class ChangeLearningLevelToolCall(_StrictBaseModel):
+    """사용자가 요청한 레벨 변경 저장을 요청합니다."""
+
+    action: Literal["change_learning_level"]
+    arguments: ChangeLearningLevelArguments
+
+
 class CompleteInitialAssessmentArguments(_StrictBaseModel):
     """LLM이 초기 실력 테스트를 마친 뒤 제출할 평가 항목을 검증합니다."""
 
@@ -100,22 +140,49 @@ class CompleteInitialAssessmentToolCall(_StrictBaseModel):
     arguments: CompleteInitialAssessmentArguments
 
 
-# action 값에 따라 최종 답변과 복습 단어 저장 요청 중 검증할 모델을 선택합니다.
+# 일반 학습에서는 레벨 변경 도구를 제공하지 않습니다.
 AgentResponse = Annotated[
-    AgentReply | SaveReviewWordToolCall | CompleteInitialAssessmentToolCall,
+    AgentReply
+    | SaveReviewWordToolCall
+    | SaveStudyRecordToolCall
+    | CompleteInitialAssessmentToolCall,
+    Field(discriminator="action"),
+]
+
+LevelChangeAgentResponse = Annotated[
+    AgentReply
+    | SaveReviewWordToolCall
+    | SaveStudyRecordToolCall
+    | ChangeLearningLevelToolCall
+    | CompleteInitialAssessmentToolCall,
     Field(discriminator="action"),
 ]
 
 _AGENT_RESPONSE_ADAPTER = TypeAdapter(AgentResponse)
+_LEVEL_CHANGE_AGENT_RESPONSE_ADAPTER = TypeAdapter(LevelChangeAgentResponse)
 
 InitialAssessmentInProgressResponse = AgentReply
+InitialAssessmentCompletionResponse = CompleteInitialAssessmentToolCall
 
 # 동일한 정의를 Ollama의 출력 스키마와 Python 입력 검증에 사용
 # 이렇게 하면 Ollama에게 전달할 JSON 스키마와
 # Ollama가 반환한 JSON 검증 규칙이 달라지는 문제를 줄일 수 있음
 AGENT_RESPONSE_SCHEMA: dict[str, object] = _AGENT_RESPONSE_ADAPTER.json_schema()
+LEVEL_CHANGE_AGENT_RESPONSE_SCHEMA: dict[str, object] = (
+    _LEVEL_CHANGE_AGENT_RESPONSE_ADAPTER.json_schema()
+)
 INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_SCHEMA: dict[str, object] = (
     InitialAssessmentInProgressResponse.model_json_schema()
+)
+INITIAL_ASSESSMENT_COMPLETION_RESPONSE_SCHEMA: dict[str, object] = (
+    InitialAssessmentCompletionResponse.model_json_schema()
+)
+
+_INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_ADAPTER = TypeAdapter(
+    InitialAssessmentInProgressResponse
+)
+_INITIAL_ASSESSMENT_COMPLETION_RESPONSE_ADAPTER = TypeAdapter(
+    InitialAssessmentCompletionResponse
 )
 
 
@@ -127,3 +194,35 @@ def parse_agent_response(
         return _AGENT_RESPONSE_ADAPTER.validate_python(content)
     except ValidationError as error:
         raise AgentResponseError("모델 응답이 정해진 형식과 맞지 않습니다.") from error
+
+
+def parse_level_change_agent_response(
+    content: dict[str, object],
+) -> LevelChangeAgentResponse:
+    """레벨 변경 요청 대화에서만 허용되는 응답을 검증합니다."""
+    try:
+        return _LEVEL_CHANGE_AGENT_RESPONSE_ADAPTER.validate_python(content)
+    except ValidationError as error:
+        raise AgentResponseError("모델 응답이 정해진 형식과 맞지 않습니다.") from error
+
+
+def parse_initial_assessment_in_progress_response(
+    content: dict[str, object],
+) -> AgentReply:
+    """완료 전 초기 테스트에서는 문제 안내 답변만 허용."""
+    try:
+        return _INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_ADAPTER.validate_python(content)
+    except ValidationError as error:
+        raise AgentResponseError("초기 실력 테스트 진행 중에는 답변만 반환할 수 있습니다.") from error
+
+
+def parse_initial_assessment_completion_response(
+    content: dict[str, object],
+) -> CompleteInitialAssessmentToolCall:
+    """답변 14개 뒤 활성 초기 테스트에서는 완료 도구만 허용."""
+    try:
+        return _INITIAL_ASSESSMENT_COMPLETION_RESPONSE_ADAPTER.validate_python(content)
+    except ValidationError as error:
+        raise AgentResponseError(
+            "초기 실력 테스트 완료 전에는 완료 도구를 호출해야 합니다."
+        ) from error

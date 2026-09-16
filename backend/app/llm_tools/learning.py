@@ -4,19 +4,23 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 from app.agent.protocol import (
+    ChangeLearningLevelToolCall,
     CompleteInitialAssessmentToolCall,
     SaveReviewWordToolCall,
+    SaveStudyRecordToolCall,
 )
 from app.database import (
     InitialAssessmentError,
     LearningProfileError,
     add_proficiency_test,
+    change_learning_level,
     finish_initial_assessment,
     get_learning_profile,
     list_proficiency_tests,
     require_initial_assessment_completion,
     save_learning_profile,
     save_review_word,
+    upsert_study_record,
 )
 
 
@@ -66,6 +70,65 @@ def execute_save_review_word(
             "saved": True,
             "review_word_id": review_word.id,
             "term": review_word.term,
+        },
+    )
+
+
+def execute_save_study_record(
+    database_url: str,
+    *,
+    tool_call: SaveStudyRecordToolCall,
+    study_date: date,
+    current_time: datetime,
+    chat_id: int | None,
+) -> ToolResult:
+    """현재 채팅의 학습 진도를 서버 날짜와 시각으로 저장합니다."""
+    if chat_id is None:
+        raise LearningProfileError("학습 진도를 저장할 채팅을 찾을 수 없습니다.")
+
+    record = upsert_study_record(
+        database_url,
+        chat_id=chat_id,
+        study_date=study_date,
+        topic=tool_call.arguments.topic,
+        new_words=tool_call.arguments.new_words,
+        expression=tool_call.arguments.expression,
+        notes=tool_call.arguments.notes,
+        created_at=current_time,
+    )
+
+    return ToolResult(
+        name=tool_call.action,
+        content={
+            "saved": True,
+            "study_record_id": record.id,
+            "topic": record.topic,
+        },
+    )
+
+
+def execute_change_learning_level(
+    database_url: str,
+    *,
+    tool_call: ChangeLearningLevelToolCall,
+    study_date: date,
+    current_time: datetime,
+) -> ToolResult:
+    """검증된 레벨 변경을 현재 프로필과 변경 이력에 함께 저장합니다."""
+    change = change_learning_level(
+        database_url,
+        changed_on=study_date,
+        new_level=tool_call.arguments.new_level,
+        reason=tool_call.arguments.reason,
+        updated_at=current_time,
+    )
+
+    return ToolResult(
+        name=tool_call.action,
+        content={
+            "saved": True,
+            "previous_level": change.previous_level,
+            "current_level": change.new_level,
         },
     )
 

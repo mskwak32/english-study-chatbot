@@ -24,6 +24,28 @@ class ConversationError(ValueError):
     """대화 요청을 안전하게 처리할 수 없을 때 발생합니다."""
 
 
+_LEVEL_CHANGE_ACTION_KEYWORDS = (
+    "변경",
+    "조정",
+    "재평가",
+    "평가",
+    "올려",
+    "높여",
+    "낮춰",
+    "내려",
+    "상향",
+    "하향",
+)
+
+
+def _is_level_change_requested(user_content: str) -> bool:
+    """현재 사용자 입력이 레벨 변경 또는 재평가를 직접 요청했는지 확인합니다."""
+    normalized_content = " ".join(user_content.split())
+    return "레벨" in normalized_content and any(
+        keyword in normalized_content for keyword in _LEVEL_CHANGE_ACTION_KEYWORDS
+    )
+
+
 async def respond_to_chat(
     llm_client: LLMClient,
     *,
@@ -79,6 +101,7 @@ async def respond_to_chat(
         study_date=study_date,
         current_time=current_time,
         chat_id=chat_id,
+        level_change_requested=_is_level_change_requested(user_content),
     )
 
     return add_message(

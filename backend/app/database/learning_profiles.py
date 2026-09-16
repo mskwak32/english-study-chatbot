@@ -369,6 +369,91 @@ def add_level_change(
     )
 
 
+def change_learning_level(
+    database_url: str,
+    *,
+    changed_on: date,
+    new_level: str,
+    reason: str,
+    updated_at: datetime,
+) -> LevelChange:
+    """기존 프로필의 레벨을 바꾸고 변경 이력을 하나의 작업으로 저장합니다."""
+    _validate_level(new_level, "새 레벨")
+    if not reason.strip():
+        raise LearningProfileError("레벨 변경 근거는 비어 있을 수 없습니다.")
+
+    updated_at_utc = to_utc(updated_at)
+    connection = connect_database(database_url)
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute(
+            "SELECT current_level FROM learning_profiles WHERE id = 1"
+        ).fetchone()
+        if row is None:
+            raise LearningProfileError("레벨을 변경할 학습 프로필이 없습니다.")
+
+        previous_level = row[0]
+        if previous_level == new_level:
+            raise LearningProfileError("현재 레벨과 같은 레벨로 변경할 수 없습니다.")
+
+        connection.execute(
+            """
+            UPDATE learning_profiles
+            SET
+                current_level = ?,
+                level_updated_on = ?,
+                level_note = ?,
+                updated_at = ?
+            WHERE id = 1
+            """,
+            (
+                new_level,
+                changed_on.isoformat(),
+                reason.strip(),
+                updated_at_utc.isoformat(),
+            ),
+        )
+        cursor = connection.execute(
+            """
+            INSERT INTO level_changes (
+                profile_id,
+                changed_on,
+                previous_level,
+                new_level,
+                reason,
+                created_at
+            ) VALUES (1, ?, ?, ?, ?, ?)
+            """,
+            (
+                changed_on.isoformat(),
+                previous_level,
+                new_level,
+                reason.strip(),
+                updated_at_utc.isoformat(),
+            ),
+        )
+        change_id = cursor.lastrowid
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+    if change_id is None:
+        raise LearningProfileError("레벨 변경 이력 ID를 만들 수 없습니다.")
+
+    return LevelChange(
+        id=change_id,
+        changed_on=changed_on,
+        previous_level=previous_level,
+        new_level=new_level,
+        reason=reason.strip(),
+        created_at=updated_at_utc,
+    )
+
+
 def list_level_changes(database_url: str) -> list[LevelChange]:
     """레벨 변경 이력을 오래된 순서대로 반환합니다."""
     connection = connect_database(database_url)

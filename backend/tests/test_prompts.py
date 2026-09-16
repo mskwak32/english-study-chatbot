@@ -41,7 +41,10 @@ def test_build_chat_prompt_uses_empty_learning_state_for_new_user(
     prompt = build_chat_prompt(
         database_url,
         "영어 튜터 지침",
-        "세션 형식 (총 10분)을 적용합니다.",
+        (
+            "세션 형식 (총 10분)을 적용합니다. "
+            "정답 피드백 뒤 같은 응답에서 다음 문제를 제시합니다."
+        ),
         [_message(1, "user", "영어 공부 시작")],
         initial_assessment_instructions="초기 평가 전용 지침",
     )
@@ -52,6 +55,7 @@ def test_build_chat_prompt_uses_empty_learning_state_for_new_user(
     assert "복습 단어 없음" in prompt[0].content
     assert "학습 이력 없음" in prompt[0].content
     assert "세션 형식 (총 10분)" in prompt[0].content
+    assert "같은 응답에서 다음 문제를 제시합니다" in prompt[0].content
     assert "초기 평가 전용 지침" not in prompt[0].content
     assert prompt[1].content == "영어 공부 시작"
 

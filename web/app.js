@@ -14,6 +14,7 @@ import {
   createMessageFlow,
   shouldSubmitMessageShortcut,
 } from "/message-flow.js";
+import { scrollMessageListToBottom } from "/message-list.js";
 
 const mainContent = document.querySelector("#main-content");
 const chatPanel = document.querySelector("#chat-panel");
@@ -123,6 +124,7 @@ function renderChatState({ activeChat, chats: nextChats, messages }) {
   startLearningStatus.hidden = true;
   startLearningStatus.classList.remove("is-error");
   loadingStatus.hidden = true;
+  scrollMessageListToBottom(messageList);
   syncControlState();
 }
 
@@ -134,6 +136,7 @@ function renderChatState({ activeChat, chats: nextChats, messages }) {
 function appendMessage(message) {
   messageList.append(createMessageElement(message));
   emptyMessage.hidden = true;
+  scrollMessageListToBottom(messageList);
 }
 
 /** 선택·전송 요청이 겹치지 않도록 모든 조작 요소의 잠금 상태를 맞춥니다. */

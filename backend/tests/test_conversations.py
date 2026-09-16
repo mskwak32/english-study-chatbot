@@ -16,6 +16,7 @@ from app.llm import (
     LLMStructuredResponse,
 )
 from app.services import ConversationError, respond_to_chat
+from app.services.conversations import _is_level_change_requested
 from app.services.prompts import USER_MESSAGE_CHARACTER_LIMIT
 
 
@@ -67,6 +68,14 @@ def _create_chat(database_url: str) -> int:
         created_at=datetime(2026, 9, 10, tzinfo=UTC),
     )
     return chat.id
+
+
+def test_level_change_permission_requires_level_and_direct_action() -> None:
+    """레벨 변경 도구는 현재 입력의 명시적 요청에서만 노출합니다."""
+    assert _is_level_change_requested("현재 레벨을 올려 주세요.")
+    assert _is_level_change_requested("레벨 재평가를 해 주세요.")
+    assert not _is_level_change_requested("오늘 레벨에 맞는 문제를 내 주세요.")
+    assert not _is_level_change_requested("문법 난이도를 올려 주세요.")
 
 
 def test_respond_to_chat_saves_user_and_assistant_messages(

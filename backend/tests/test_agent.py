@@ -10,7 +10,9 @@ from app.agent import (
 )
 from app.agent.protocol import (
     AGENT_RESPONSE_SCHEMA,
+    INITIAL_ASSESSMENT_COMPLETION_RESPONSE_SCHEMA,
     INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_SCHEMA,
+    LEVEL_CHANGE_AGENT_RESPONSE_SCHEMA,
 )
 from app.database import (
     add_message,
@@ -19,6 +21,7 @@ from app.database import (
     initialize_database,
     list_proficiency_tests,
     list_review_words,
+    save_learning_profile,
     start_initial_assessment,
 )
 from app.llm import (
@@ -181,6 +184,48 @@ def test_run_agent_executes_tool_and_requests_final_reply(
     assert review_words[0].term == "hesitate"
 
 
+def test_run_agent_allows_level_change_only_for_explicit_request(
+    tmp_path: Path,
+) -> None:
+    """레벨 변경 도구는 명시 요청 대화의 스키마에서만 실행합니다."""
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    save_learning_profile(
+        database_url,
+        current_level="A2",
+        updated_at=datetime(2026, 9, 10, tzinfo=UTC),
+    )
+    llm_client = FakeLLMClient(
+        responses=[
+            {
+                "action": "change_learning_level",
+                "arguments": {
+                    "new_level": "B1",
+                    "reason": "독해와 작문 결과가 안정적입니다.",
+                },
+            },
+            {"action": "reply", "message": "요청하신 레벨 변경을 저장했습니다."},
+        ]
+    )
+
+    reply = asyncio.run(
+        run_agent(
+            llm_client,
+            messages=[LLMMessage(role="user", content="레벨 재평가를 해 주세요.")],
+            database_url=database_url,
+            study_date=date(2026, 9, 10),
+            current_time=datetime(2026, 9, 10, tzinfo=UTC),
+            level_change_requested=True,
+        )
+    )
+
+    assert reply == "요청하신 레벨 변경을 저장했습니다."
+    assert llm_client.calls[0][1] == LEVEL_CHANGE_AGENT_RESPONSE_SCHEMA
+    profile = get_learning_profile(database_url)
+    assert profile is not None
+    assert profile.current_level == "B1"
+
+
 def test_run_agent_hides_completion_action_until_all_answers_are_saved(
     tmp_path: Path,
 ) -> None:
@@ -205,6 +250,43 @@ def test_run_agent_hides_completion_action_until_all_answers_are_saved(
 
     assert reply == "첫 번째 어휘 문제입니다."
     assert llm_client.calls[0][1] == INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_SCHEMA
+
+
+def test_run_agent_rejects_tool_during_initial_assessment(
+    tmp_path: Path,
+) -> None:
+    """초기 테스트 답변 수가 부족하면 문제 안내 외의 도구 실행 금지."""
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    chat_id = _start_initial_assessment(database_url)
+    llm_client = FakeLLMClient(
+        responses=[
+            {
+                "action": "save_review_word",
+                "arguments": {
+                    "term": "hesitate",
+                    "explanation": "망설이다",
+                },
+            }
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="진행 중에는 답변만 반환",
+    ):
+        asyncio.run(
+            run_agent(
+                llm_client,
+                messages=[LLMMessage(role="user", content="학습 프로필 만들기")],
+                database_url=database_url,
+                study_date=date(2026, 9, 10),
+                current_time=datetime(2026, 9, 10, tzinfo=UTC),
+                chat_id=chat_id,
+            )
+        )
+
+    assert list_review_words(database_url) == []
 
 
 def test_run_agent_completes_initial_assessment_before_returning_reply(
@@ -251,9 +333,93 @@ def test_run_agent_completes_initial_assessment_before_returning_reply(
 
     assert reply == "초기 실력 테스트를 완료했습니다."
     assert len(llm_client.calls) == 2
-    assert llm_client.calls[0][1] == AGENT_RESPONSE_SCHEMA
+    assert llm_client.calls[0][1] == INITIAL_ASSESSMENT_COMPLETION_RESPONSE_SCHEMA
+    assert llm_client.calls[1][1] == INITIAL_ASSESSMENT_IN_PROGRESS_RESPONSE_SCHEMA
     assert get_learning_profile(database_url) is not None
     assert [test.final_level for test in list_proficiency_tests(database_url)] == ["B1"]
+
+
+def test_run_agent_rejects_reply_before_initial_assessment_completion(
+    tmp_path: Path,
+) -> None:
+    """14개 답변 뒤에는 완료 도구 없이 프로필 완료 안내 반환 금지."""
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    chat_id = _start_initial_assessment(database_url)
+    _add_initial_assessment_answers(database_url, chat_id)
+    llm_client = FakeLLMClient(
+        responses=[{"action": "reply", "message": "학습 프로필을 만들었습니다."}]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="완료 도구를 호출해야 합니다",
+    ):
+        asyncio.run(
+            run_agent(
+                llm_client,
+                messages=[LLMMessage(role="user", content="마지막 답변입니다.")],
+                database_url=database_url,
+                study_date=date(2026, 9, 10),
+                current_time=datetime(2026, 9, 10, tzinfo=UTC),
+                chat_id=chat_id,
+            )
+        )
+
+    assert get_learning_profile(database_url) is None
+
+
+def test_run_agent_rejects_tool_after_initial_assessment_completion(
+    tmp_path: Path,
+) -> None:
+    """완료 저장 직후에는 최종 답변 외의 추가 도구 실행 금지."""
+    database_url = _database_url(tmp_path)
+    initialize_database(database_url)
+    chat_id = _start_initial_assessment(database_url)
+    _add_initial_assessment_answers(database_url, chat_id)
+    llm_client = FakeLLMClient(
+        responses=[
+            {
+                "action": "complete_initial_assessment",
+                "arguments": {
+                    "final_level": "B1",
+                    "score_earned": 12,
+                    "vocabulary_result": "어휘 결과",
+                    "grammar_result": "문법 결과",
+                    "reading_result": "독해 결과",
+                    "self_expression_result": "자기표현 결과",
+                    "strengths": "문장 이해",
+                    "weaknesses": "시제 정확성",
+                    "level_note": "초기 테스트 12/14점",
+                },
+            },
+            {
+                "action": "save_review_word",
+                "arguments": {
+                    "term": "hesitate",
+                    "explanation": "망설이다",
+                },
+            },
+        ]
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="진행 중에는 답변만 반환",
+    ):
+        asyncio.run(
+            run_agent(
+                llm_client,
+                messages=[LLMMessage(role="user", content="마지막 답변입니다.")],
+                database_url=database_url,
+                study_date=date(2026, 9, 10),
+                current_time=datetime(2026, 9, 10, tzinfo=UTC),
+                chat_id=chat_id,
+            )
+        )
+
+    assert get_learning_profile(database_url) is not None
+    assert list_review_words(database_url) == []
 
 
 def test_run_agent_stops_before_exceeding_tool_call_limit(

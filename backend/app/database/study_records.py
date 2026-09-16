@@ -106,6 +106,86 @@ def add_study_record(
     )
 
 
+def upsert_study_record(
+    database_url: str,
+    *,
+    chat_id: int,
+    study_date: date,
+    topic: str,
+    created_at: datetime,
+    new_words: str = "",
+    expression: str = "",
+    notes: str = "",
+) -> StudyRecord:
+    """채팅별 학습 요약을 생성하거나 최신 요약으로 갱신합니다."""
+    if chat_id <= 0:
+        raise StudyRecordError("채팅 ID는 1 이상이어야 합니다.")
+    if not topic.strip():
+        raise StudyRecordError("학습 주제는 비어 있을 수 없습니다.")
+
+    created_at_utc = to_utc(created_at)
+    connection = connect_database(database_url)
+
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(
+            """
+            INSERT INTO study_records (
+                chat_id,
+                study_date,
+                topic,
+                new_words,
+                expression,
+                notes,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (chat_id) DO UPDATE SET
+                study_date = excluded.study_date,
+                topic = excluded.topic,
+                new_words = excluded.new_words,
+                expression = excluded.expression,
+                notes = excluded.notes,
+                created_at = excluded.created_at
+            """,
+            (
+                chat_id,
+                study_date.isoformat(),
+                topic.strip(),
+                new_words.strip(),
+                expression.strip(),
+                notes.strip(),
+                created_at_utc.isoformat(),
+            ),
+        )
+        row = connection.execute(
+            """
+            SELECT
+                id,
+                chat_id,
+                study_date,
+                topic,
+                new_words,
+                expression,
+                notes,
+                created_at
+            FROM study_records
+            WHERE chat_id = ?
+            """,
+            (chat_id,),
+        ).fetchone()
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+    if row is None:
+        raise StudyRecordError("저장한 학습 이력을 찾을 수 없습니다.")
+
+    return _study_record_from_row(row)
+
+
 def list_recent_study_records(
     database_url: str,
     limit: int = 5,
