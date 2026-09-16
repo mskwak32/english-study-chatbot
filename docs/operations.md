@@ -42,7 +42,17 @@ tar -cf - \
 
 이 최초 설정에서는 Compose·스크립트·문서만 덮어씁니다. `.env`, `data/`, `backups/`, 기존 `instructions/`, Ollama volume은 전송하거나 변경하지 않습니다. 이후 일반적인 Agent 배포에서는 이미지 아카이브와 체크섬만 전송합니다.
 
-SQLite 저장소 권한과 `.env`는 기존 값을 유지합니다.
+`.env`가 없다면 Pi에서만 `.env.example`을 복사해 만듭니다. 기존 `.env`가 있다면 덮어쓰지 않습니다.
+
+```bash
+cd /home/<Pi 사용자명>/english_study_ai
+test -f .env || cp .env.example .env
+chmod 0600 .env
+```
+
+필요하면 `.env`에서 `MODEL`, `OLLAMA_KEEP_ALIVE`, `TIMEZONE` 값을 조정합니다. `.env`에는 환경별 설정이 들어가므로 Git, 이미지 아카이브, SSH 전송 대상에 포함하지 않습니다.
+
+SQLite 저장소 권한도 확인합니다.
 
 ```bash
 cd /home/<Pi 사용자명>/english_study_ai
