@@ -2,7 +2,6 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
-
 from app.agent.protocol import (
     ChangeLearningLevelToolCall,
     CompleteInitialAssessmentToolCall,

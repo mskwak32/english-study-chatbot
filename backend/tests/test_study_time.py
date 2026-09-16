@@ -2,7 +2,6 @@ from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
-
 from app.study_time import (
     StudyTimeError,
     study_date_for,

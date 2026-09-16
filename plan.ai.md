@@ -29,7 +29,7 @@ Raspberry Pi 5에서 Docker Compose로 실행하고 PC·휴대폰 브라우저�
 | 4. Ollama와 Python Agent | 완료 | 구조화 JSON Agent, 학습 데이터 저장, `keep_alive` 구현 |
 | 5. 반응형 Web UI | 완료 | 채팅, 정보 화면, 초기 프로필 생성, 키보드 전송 구현 |
 | 6. Docker Compose와 Raspberry Pi 배포 | 완료 | Agent·Ollama 분리, 영속 저장소, 최소 권한 Agent, 운영 문서화 |
-| 7. PC 기반 ARM64 이미지 배포 | 진행 중 | 개발 PC 이미지 빌드·Pi 직접 전송, Agent 업데이트·롤백 절차 |
+| 7. PC 기반 ARM64 이미지 배포 | 완료 | 개발 PC 검증·ARM64 archive 직접 전송, Agent-only 업데이트·롤백 검증 |
 
 4단계의 Raspberry Pi 측정에서 `gemma3:4b` warm 요청은 첫 응답 0.52~0.53초, 전체 21.19~24.32초였고 최대 RSS는 4.20 GiB였다.
 
@@ -48,17 +48,13 @@ Raspberry Pi 5에서 Docker Compose로 실행하고 PC·휴대폰 브라우저�
 - 테스트 전용 SQLite DB를 이용해 컨테이너 재생성 뒤 DB·모델 영속성, 운영 DB 분리, 지침 쓰기 차단을 확인했다.
 - 설치·시작·중지·상태·업데이트·LAN 접속·백업·삭제 주의사항을 `docs/operations.md`에 정리했다.
 
-## 다음 단계
+### 7단계 검증 결과
 
-### 7단계 — PC 기반 ARM64 이미지 배포
-
-검증된 Agent 이미지를 개발 PC에서 ARM64로 빌드해 Pi에 직접 전송하고, Agent만 안전하게 교체·롤백하는 배포 절차를 구현한다.
-
-- 개발 PC에서 Python·Web 테스트를 통과한 코드만 ARM64 Agent 이미지로 빌드한다.
-- 이미지 archive를 SSH 기반 전송으로 Pi에 전달하고, Pi에서 `docker load`로 가져온다. Agent image에는 버전 고정 런타임 지침을 포함한다. SQLite DB·백업, 환경 파일, Ollama 모델은 전송하지 않는다.
-- Pi의 배포용 Compose 설정은 `build:`가 아닌 전달받은 Agent 이미지를 참조한다. SQLite bind mount와 Ollama named volume은 유지한다.
-- 배포 archive의 SHA-256, 이미지 태그, Git commit, Pi의 image ID를 기록하고, 실패 시 직전 Agent 이미지로 되돌릴 수 있어야 한다.
-- SSH 키와 Pi 접속 정보는 개발 PC에만 보관하며 Git 저장소·이미지·로그에 포함하지 않는다.
+- 개발 PC에서 Python 112개와 Web 11개 테스트를 통과한 커밋만 `linux/arm64` Agent archive로 빌드한다.
+- archive와 SHA-256 파일만 SSH로 Pi에 전송하고, Pi에서 무결성을 확인한 뒤 `docker load`한다. 이미지에는 버전 고정 런타임 지침을 포함한다.
+- Compose는 전달받은 Agent 이미지만 참조한다. 업데이트와 롤백은 Agent 컨테이너만 다시 만들며 SQLite DB·백업·`.env`·Ollama 모델 volume을 변경하지 않는다.
+- Pi에서 최신 Agent 배포, 직전 이미지 롤백, 최신 이미지 재배포를 수행했다. 세 과정에서 SQLite DB 해시, Ollama 컨테이너 ID, Ollama 모델 volume이 유지되었고 현재·직전 Agent 이미지 두 개만 남았다.
+- `OLLAMA_TIMEOUT_SECONDS`의 기본값은 60초이며 Pi `.env`로 환경별 값을 설정할 수 있다. SSH 키와 Pi 접속 정보는 개발 PC에만 보관한다.
 
 ## MVP 이후 후보
 

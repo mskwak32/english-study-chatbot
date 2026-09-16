@@ -3,8 +3,6 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app import main
 from app.database import (
     get_or_create_default_chat,
@@ -17,6 +15,7 @@ from app.llm import (
     LLMMessage,
     LLMStructuredResponse,
 )
+from fastapi.testclient import TestClient
 
 
 class FakeLLMClient:

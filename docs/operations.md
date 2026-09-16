@@ -30,7 +30,7 @@ sha256sum --version
 이 단계의 `compose.yaml`과 Pi용 스크립트는 Pi 프로젝트 경로에 한 번 준비되어 있어야 합니다. 프로젝트 디렉터리가 없다면 아래 명령이 `docs/`와 `scripts/` 디렉터리를 함께 만듭니다. 개발 PC에서 다음 지원 파일만 한 번 전송합니다.
 
 ```bash
-tar --no-mac-metadata -cf - \
+COPYFILE_DISABLE=1 tar --no-mac-metadata -cf - \
   compose.yaml \
   .env.example \
   docs/operations.md \
@@ -44,7 +44,7 @@ tar --no-mac-metadata -cf - \
   && tar -xvf - -C /home/<Pi 사용자명>/english_study_ai'
 ```
 
-`--no-mac-metadata`는 macOS의 `._*` 메타데이터 파일과 확장 속성 경고를 막습니다. 이 최초 설정에서는 Compose·`.env` 예시 파일·스크립트·문서만 전송합니다. `.env`, `data/`, `backups/`, 기존 `instructions/`, Ollama volume은 전송하거나 변경하지 않습니다. 이후 일반적인 Agent 배포에서는 이미지 아카이브와 체크섬만 전송합니다.
+`COPYFILE_DISABLE=1`과 `--no-mac-metadata`는 macOS의 `._*` 메타데이터 파일 생성을 막습니다. macOS `tar` 버전에 따라 확장 속성 관련 경고가 한두 줄 나타날 수 있지만 전송 결과에는 영향이 없습니다. 이 최초 설정에서는 Compose·`.env` 예시 파일·스크립트·문서만 전송합니다. `.env`, `data/`, `backups/`, 기존 `instructions/`, Ollama volume은 전송하거나 변경하지 않습니다. 이후 일반적인 Agent 배포에서는 이미지 아카이브와 체크섬만 전송합니다.
 
 `.env`가 없다면 Pi에서만 `.env.example`을 복사해 만듭니다. 기존 `.env`가 있다면 덮어쓰지 않습니다.
 
