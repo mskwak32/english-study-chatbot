@@ -29,11 +29,12 @@ state_value() {
 }
 
 wait_for_agent_healthy() {
+    local agent_image="$1"
     local container_id
     local health_status
 
     for _ in {1..30}; do
-        container_id="$(docker compose ps -q agent)"
+        container_id="$(AGENT_IMAGE="$agent_image" docker compose ps -q agent)"
         [[ -n "$container_id" ]] || return 1
 
         health_status="$(
@@ -85,7 +86,8 @@ prune_agent_images() {
     local image
 
     while IFS= read -r image; do
-        [[ "$image" == "$current_image" || "$image" == "$previous_image" ]] && continue
+        [[ "$image" == "$current_image" ]] && continue
+        [[ "$previous_image" != 'none' && "$image" == "$previous_image" ]] && continue
 
         docker image rm "$image" > /dev/null || \
             printf '경고: 사용하지 않는 Agent image를 정리하지 못함: %s\n' "$image" >&2
@@ -103,8 +105,9 @@ require_command awk
 readonly TARGET_IMAGE="$(state_value previous_image)"
 readonly TARGET_COMMIT="$(state_value previous_git_commit)"
 readonly TARGET_CHECKSUM="$(state_value previous_archive_sha256)"
-readonly AGENT_CONTAINER_ID="$(docker compose ps -q agent)"
-readonly OLLAMA_CONTAINER_ID="$(docker compose ps -q ollama)"
+[[ "$TARGET_IMAGE" != 'none' ]] || fail '첫 Agent 배포 뒤에는 직전 image가 없어 롤백할 수 없음'
+readonly AGENT_CONTAINER_ID="$(AGENT_IMAGE="$TARGET_IMAGE" docker compose ps -q agent)"
+readonly OLLAMA_CONTAINER_ID="$(AGENT_IMAGE="$TARGET_IMAGE" docker compose ps -q ollama)"
 
 [[ -n "$AGENT_CONTAINER_ID" ]] || fail '현재 Agent 컨테이너를 찾을 수 없음'
 [[ -n "$OLLAMA_CONTAINER_ID" ]] || fail '현재 Ollama 컨테이너를 찾을 수 없음'
@@ -126,13 +129,13 @@ if ! AGENT_IMAGE="$TARGET_IMAGE" docker compose up -d --no-deps agent; then
     fail '직전 Agent image 시작 실패. 기존 Agent image 복귀를 시도함'
 fi
 
-if ! wait_for_agent_healthy; then
+if ! wait_for_agent_healthy "$TARGET_IMAGE"; then
     AGENT_IMAGE="$CURRENT_IMAGE" docker compose up -d --no-deps agent || true
-    wait_for_agent_healthy || fail '롤백 health 실패 후 기존 Agent image 복귀에도 실패함'
+    wait_for_agent_healthy "$CURRENT_IMAGE" || fail '롤백 health 실패 후 기존 Agent image 복귀에도 실패함'
     fail '롤백 Agent health 실패. 기존 Agent image로 복귀함'
 fi
 
-[[ "$(docker compose ps -q ollama)" == "$OLLAMA_CONTAINER_ID" ]] || fail \
+[[ "$(AGENT_IMAGE="$TARGET_IMAGE" docker compose ps -q ollama)" == "$OLLAMA_CONTAINER_ID" ]] || fail \
     'Agent 롤백 중 Ollama 컨테이너가 변경됨'
 
 write_state \

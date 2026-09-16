@@ -25,11 +25,12 @@ require_command() {
 }
 
 wait_for_agent_healthy() {
+    local agent_image="$1"
     local container_id
     local health_status
 
     for _ in {1..30}; do
-        container_id="$(docker compose ps -q agent)"
+        container_id="$(AGENT_IMAGE="$agent_image" docker compose ps -q agent)"
         [[ -n "$container_id" ]] || return 1
 
         health_status="$(
@@ -79,7 +80,8 @@ prune_agent_images() {
     local image
 
     while IFS= read -r image; do
-        [[ "$image" == "$current_image" || "$image" == "$previous_image" ]] && continue
+        [[ "$image" == "$current_image" ]] && continue
+        [[ "$previous_image" != 'none' && "$image" == "$previous_image" ]] && continue
 
         docker image rm "$image" > /dev/null || \
             printf '경고: 사용하지 않는 Agent image를 정리하지 못함: %s\n' "$image" >&2
@@ -126,23 +128,29 @@ require_command awk
 ) || fail 'image archive SHA-256 검증 실패'
 
 readonly ARCHIVE_SHA256="$(awk 'NR == 1 { print $1 }' "$CHECKSUM_PATH")"
-readonly AGENT_CONTAINER_ID="$(docker compose ps -q agent)"
-readonly OLLAMA_CONTAINER_ID="$(docker compose ps -q ollama)"
+readonly AGENT_CONTAINER_ID="$(AGENT_IMAGE=english-study-agent:bootstrap docker compose ps -q agent)"
+readonly OLLAMA_CONTAINER_ID="$(AGENT_IMAGE=english-study-agent:bootstrap docker compose ps -q ollama)"
 
-[[ -n "$AGENT_CONTAINER_ID" ]] || fail '현재 Agent 컨테이너를 찾을 수 없음'
 [[ -n "$OLLAMA_CONTAINER_ID" ]] || fail '현재 Ollama 컨테이너를 찾을 수 없음'
 
-readonly PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$AGENT_CONTAINER_ID")"
-readonly PREVIOUS_IMAGE_ID="$(docker image inspect "$PREVIOUS_IMAGE" --format '{{.Id}}')"
+has_previous_agent=false
+previous_image='none'
+previous_image_id='none'
 previous_commit='unknown'
 previous_checksum='unknown'
 
-if [[ -f "$STATE_PATH" ]]; then
-    recorded_current_image="$(awk -F= '$1 == "current_image" { print substr($0, 15) }' "$STATE_PATH")"
+if [[ -n "$AGENT_CONTAINER_ID" ]]; then
+    has_previous_agent=true
+    previous_image="$(docker inspect --format '{{.Config.Image}}' "$AGENT_CONTAINER_ID")"
+    previous_image_id="$(docker image inspect "$previous_image" --format '{{.Id}}')"
 
-    if [[ "$recorded_current_image" == "$PREVIOUS_IMAGE" ]]; then
-        previous_commit="$(awk -F= '$1 == "current_git_commit" { print substr($0, 20) }' "$STATE_PATH")"
-        previous_checksum="$(awk -F= '$1 == "current_archive_sha256" { print substr($0, 24) }' "$STATE_PATH")"
+    if [[ -f "$STATE_PATH" ]]; then
+        recorded_current_image="$(awk -F= '$1 == "current_image" { print substr($0, 15) }' "$STATE_PATH")"
+
+        if [[ "$recorded_current_image" == "$previous_image" ]]; then
+            previous_commit="$(awk -F= '$1 == "current_git_commit" { print substr($0, 20) }' "$STATE_PATH")"
+            previous_checksum="$(awk -F= '$1 == "current_archive_sha256" { print substr($0, 24) }' "$STATE_PATH")"
+        fi
     fi
 fi
 
@@ -156,17 +164,27 @@ readonly NEW_IMAGE_PLATFORM="$(docker image inspect "$NEW_IMAGE" --format '{{.Os
 AGENT_IMAGE="$NEW_IMAGE" docker compose config --quiet
 
 if ! AGENT_IMAGE="$NEW_IMAGE" docker compose up -d --no-deps agent; then
-    AGENT_IMAGE="$PREVIOUS_IMAGE" docker compose up -d --no-deps agent || true
-    fail '새 Agent 컨테이너 시작 실패. 직전 Agent image 복귀를 시도함'
+    if [[ "$has_previous_agent" == true ]]; then
+        AGENT_IMAGE="$previous_image" docker compose up -d --no-deps agent || true
+        fail '새 Agent 컨테이너 시작 실패. 직전 Agent image 복귀를 시도함'
+    fi
+
+    AGENT_IMAGE="$NEW_IMAGE" docker compose rm --stop --force agent || true
+    fail '첫 Agent 컨테이너 시작 실패. 생성된 Agent 컨테이너 제거를 시도함'
 fi
 
-if ! wait_for_agent_healthy; then
-    AGENT_IMAGE="$PREVIOUS_IMAGE" docker compose up -d --no-deps agent || true
-    wait_for_agent_healthy || fail '새 Agent health 실패 후 직전 Agent image 복귀에도 실패함'
-    fail '새 Agent health 실패. 직전 Agent image로 복귀함'
+if ! wait_for_agent_healthy "$NEW_IMAGE"; then
+    if [[ "$has_previous_agent" == true ]]; then
+        AGENT_IMAGE="$previous_image" docker compose up -d --no-deps agent || true
+        wait_for_agent_healthy "$previous_image" || fail '새 Agent health 실패 후 직전 Agent image 복귀에도 실패함'
+        fail '새 Agent health 실패. 직전 Agent image로 복귀함'
+    fi
+
+    AGENT_IMAGE="$NEW_IMAGE" docker compose rm --stop --force agent || true
+    fail '첫 Agent health 실패. 생성된 Agent 컨테이너 제거를 시도함'
 fi
 
-[[ "$(docker compose ps -q ollama)" == "$OLLAMA_CONTAINER_ID" ]] || fail \
+[[ "$(AGENT_IMAGE="$NEW_IMAGE" docker compose ps -q ollama)" == "$OLLAMA_CONTAINER_ID" ]] || fail \
     'Agent 업데이트 중 Ollama 컨테이너가 변경됨'
 
 write_state \
@@ -174,14 +192,14 @@ write_state \
     "$NEW_IMAGE_ID" \
     "$GIT_SHORT_COMMIT" \
     "$ARCHIVE_SHA256" \
-    "$PREVIOUS_IMAGE" \
-    "$PREVIOUS_IMAGE_ID" \
+    "$previous_image" \
+    "$previous_image_id" \
     "$previous_commit" \
     "$previous_checksum"
-prune_agent_images "$NEW_IMAGE" "$PREVIOUS_IMAGE"
+prune_agent_images "$NEW_IMAGE" "$previous_image"
 
 printf '%s\n' \
     'Agent 업데이트 완료' \
     "현재 image: $NEW_IMAGE ($NEW_IMAGE_ID)" \
-    "직전 image: $PREVIOUS_IMAGE ($PREVIOUS_IMAGE_ID)" \
+    "직전 image: $previous_image ($previous_image_id)" \
     "배포 기록: $STATE_PATH"

@@ -27,20 +27,24 @@ docker compose version
 sha256sum --version
 ```
 
-이 단계의 `compose.yaml`과 Pi용 스크립트는 Pi 프로젝트 경로에 한 번 준비되어 있어야 합니다. 기존 6단계 Pi 프로젝트를 사용하는 경우, 개발 PC에서 다음 지원 파일만 한 번 전송합니다.
+이 단계의 `compose.yaml`과 Pi용 스크립트는 Pi 프로젝트 경로에 한 번 준비되어 있어야 합니다. 프로젝트 디렉터리가 없다면 아래 명령이 `docs/`와 `scripts/` 디렉터리를 함께 만듭니다. 개발 PC에서 다음 지원 파일만 한 번 전송합니다.
 
 ```bash
-tar -cf - \
+tar --no-mac-metadata -cf - \
   compose.yaml \
+  .env.example \
   docs/operations.md \
   scripts/deploy_agent_archive.sh \
   scripts/rollback_agent.sh \
   scripts/verify_compose_deployment.sh \
 | ssh <Pi-SSH-대상> \
-  'tar -xf - -C /home/<Pi 사용자명>/english_study_ai'
+  'mkdir -p \
+    /home/<Pi 사용자명>/english_study_ai/docs \
+    /home/<Pi 사용자명>/english_study_ai/scripts \
+  && tar -xvf - -C /home/<Pi 사용자명>/english_study_ai'
 ```
 
-이 최초 설정에서는 Compose·스크립트·문서만 덮어씁니다. `.env`, `data/`, `backups/`, 기존 `instructions/`, Ollama volume은 전송하거나 변경하지 않습니다. 이후 일반적인 Agent 배포에서는 이미지 아카이브와 체크섬만 전송합니다.
+`--no-mac-metadata`는 macOS의 `._*` 메타데이터 파일과 확장 속성 경고를 막습니다. 이 최초 설정에서는 Compose·`.env` 예시 파일·스크립트·문서만 전송합니다. `.env`, `data/`, `backups/`, 기존 `instructions/`, Ollama volume은 전송하거나 변경하지 않습니다. 이후 일반적인 Agent 배포에서는 이미지 아카이브와 체크섬만 전송합니다.
 
 `.env`가 없다면 Pi에서만 `.env.example`을 복사해 만듭니다. 기존 `.env`가 있다면 덮어쓰지 않습니다.
 
@@ -64,9 +68,13 @@ chmod 0755 scripts/*.sh
 처음 Agent 이미지를 배포하기 전에는 Ollama와 모델이 이미 준비되어 있어야 합니다.
 
 ```bash
-docker compose ps
-docker compose exec ollama ollama show gemma3:4b
+AGENT_IMAGE=english-study-agent:bootstrap docker compose up -d ollama
+AGENT_IMAGE=english-study-agent:bootstrap docker compose ps
+AGENT_IMAGE=english-study-agent:bootstrap \
+  docker compose exec ollama ollama show gemma3:4b
 ```
+
+`english-study-agent:bootstrap`은 Compose 설정 해석에만 사용하는 임시 이름입니다. 이 단계에서는 `ollama`만 시작하므로 해당 Agent 이미지가 존재할 필요가 없습니다. 첫 배포 명령이 실제 Agent 이미지를 load하고 처음 Agent 컨테이너를 만듭니다.
 
 ## 개발 PC 준비
 
