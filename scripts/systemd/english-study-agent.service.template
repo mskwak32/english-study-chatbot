@@ -1,0 +1,25 @@
+[Unit]
+Description=English Study Agent
+Wants=network-online.target
+After=network-online.target ollama.service
+
+[Service]
+Type=simple
+User=__RUN_AS_USER__
+Group=__RUN_AS_GROUP__
+WorkingDirectory=__PROJECT_ROOT__/current
+EnvironmentFile=__PROJECT_ROOT__/.env
+Environment=PYTHONPATH=__PROJECT_ROOT__/current/backend
+ExecStart=__PROJECT_ROOT__/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8100
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__PROJECT_ROOT__/data
+ReadOnlyPaths=__PROJECT_ROOT__/.env __PROJECT_ROOT__/releases
+
+[Install]
+WantedBy=multi-user.target
