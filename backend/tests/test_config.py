@@ -10,6 +10,7 @@ def test_settings_use_defaults() -> None:
     assert settings.model == "gemma3:4b"
     assert settings.ollama_base_url == "http://localhost:11434"
     assert settings.ollama_keep_alive == "30m"
+    assert settings.ollama_timeout_seconds == 60.0
     assert settings.instructions_path == PROJECT_ROOT / "instructions"
     assert settings.timezone == "Asia/Seoul"
 
@@ -18,12 +19,14 @@ def test_settings_read_environment(monkeypatch) -> None:
     monkeypatch.setenv("MODEL", "test-model")
     monkeypatch.setenv("TIMEZONE", "UTC")
     monkeypatch.setenv("OLLAMA_KEEP_ALIVE", "45m")
+    monkeypatch.setenv("OLLAMA_TIMEOUT_SECONDS", "180")
 
     settings = Settings()
 
     assert settings.model == "test-model"
     assert settings.timezone == "UTC"
     assert settings.ollama_keep_alive == "45m"
+    assert settings.ollama_timeout_seconds == 180.0
 
 
 def test_settings_reject_empty_model(monkeypatch) -> None:
@@ -48,6 +51,19 @@ def test_settings_reject_empty_ollama_keep_alive(monkeypatch) -> None:
     with pytest.raises(
         ValidationError,
         match="OLLAMA_KEEP_ALIVE must not be empty",
+    ):
+        Settings()
+
+
+@pytest.mark.parametrize("timeout", ["0", "-1"])
+def test_settings_reject_non_positive_ollama_timeout_seconds(
+    monkeypatch, timeout: str
+) -> None:
+    monkeypatch.setenv("OLLAMA_TIMEOUT_SECONDS", timeout)
+
+    with pytest.raises(
+        ValidationError,
+        match="OLLAMA_TIMEOUT_SECONDS must be greater than zero",
     ):
         Settings()
 

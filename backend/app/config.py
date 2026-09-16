@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     model: str = "gemma3:4b"
     ollama_base_url: str = "http://localhost:11434"
     ollama_keep_alive: str = "30m"
+    ollama_timeout_seconds: float = 60.0
     instructions_path: Path = PROJECT_ROOT / "instructions"
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'data' / 'chat.db'}"
     timezone: str = "Asia/Seoul"
@@ -54,6 +55,15 @@ class Settings(BaseSettings):
 
         if not value:
             raise ValueError("OLLAMA_KEEP_ALIVE must not be empty")
+
+        return value
+
+    @field_validator("ollama_timeout_seconds")
+    @classmethod
+    def validate_ollama_timeout_seconds(cls, value: float) -> float:
+        """Ollama HTTP 요청 대기 시간이 양수인지 검증합니다."""
+        if value <= 0:
+            raise ValueError("OLLAMA_TIMEOUT_SECONDS must be greater than zero")
 
         return value
 

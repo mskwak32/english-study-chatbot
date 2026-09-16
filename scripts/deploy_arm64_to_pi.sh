@@ -57,5 +57,6 @@ ssh "$PI_TARGET" \
 
 # docker load가 성공한 archive를 image로 보관하므로 전송용 임시 파일만 삭제.
 ssh "$PI_TARGET" "rm -f -- '$PI_ARCHIVE_PATH' '$PI_CHECKSUM_PATH'"
+rm -f -- "$ARCHIVE_PATH" "$CHECKSUM_PATH"
 
 printf '%s\n' 'PC build·Pi Agent 배포 완료'

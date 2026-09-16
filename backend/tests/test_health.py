@@ -64,3 +64,34 @@ def test_lifespan_initializes_database(
         connection.close()
 
     assert schema_table == ("schema_migrations",)
+
+
+def test_lifespan_passes_configured_ollama_timeout(
+    temporary_app_settings: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created_clients: list[dict[str, object]] = []
+
+    class CapturingOllamaClient:
+        def __init__(self, base_url: str, model: str, **kwargs: object) -> None:
+            created_clients.append(
+                {"base_url": base_url, "model": model, **kwargs}
+            )
+
+        async def aclose(self) -> None:
+            pass
+
+    monkeypatch.setattr(main, "OllamaClient", CapturingOllamaClient)
+    monkeypatch.setattr(main.settings, "ollama_timeout_seconds", 180.0)
+
+    with TestClient(main.app):
+        pass
+
+    assert created_clients == [
+        {
+            "base_url": main.settings.ollama_base_url,
+            "model": main.settings.model,
+            "timeout_seconds": 180.0,
+            "keep_alive": main.settings.ollama_keep_alive,
+        }
+    ]

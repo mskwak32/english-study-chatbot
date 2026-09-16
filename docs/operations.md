@@ -54,7 +54,7 @@ test -f .env || cp .env.example .env
 chmod 0600 .env
 ```
 
-필요하면 `.env`에서 `MODEL`, `OLLAMA_KEEP_ALIVE`, `TIMEZONE` 값을 조정합니다. `.env`에는 환경별 설정이 들어가므로 Git, 이미지 아카이브, SSH 전송 대상에 포함하지 않습니다.
+필요하면 `.env`에서 `MODEL`, `OLLAMA_KEEP_ALIVE`, `OLLAMA_TIMEOUT_SECONDS`, `TIMEZONE` 값을 조정합니다. 응답이 느린 환경에서는 `OLLAMA_TIMEOUT_SECONDS=180`처럼 HTTP 요청 하나의 대기 시간만 늘릴 수 있습니다. 기본값은 60초이며, `OLLAMA_KEEP_ALIVE`는 모델 상주 시간이라 응답 대기 시간과 다릅니다. `.env`에는 환경별 설정이 들어가므로 Git, 이미지 아카이브, SSH 전송 대상에 포함하지 않습니다.
 
 SQLite 저장소 권한도 확인합니다.
 
@@ -104,7 +104,7 @@ AGENT_IMAGE=english-study-agent:bootstrap \
 4. 이미지 아카이브와 체크섬 파일만 Pi의 `.deployment/incoming/`으로 전송합니다.
 5. Pi에서 체크섬 검증, `docker load`, Agent 교체, 상태 검사를 수행합니다.
 6. 실패하면 Pi가 직전 Agent 이미지로 자동 복귀합니다.
-7. 성공하면 Pi의 임시 아카이브·체크섬 파일을 삭제하고, 현재·직전 Agent 이미지 태그만 보관합니다.
+7. 성공하면 PC와 Pi의 임시 아카이브·체크섬 파일을 삭제하고, Pi에는 현재·직전 Agent 이미지 태그만 보관합니다.
 
 Pi의 `.deployment/agent-state`에는 현재·직전 이미지 태그와 이미지 ID, Git 커밋, 아카이브 SHA-256, 배포 시각만 저장됩니다. SQLite·환경 변수·모델 정보는 기록하지 않습니다.
 

@@ -41,6 +41,7 @@ async def lifespan(app: FastAPI):
     llm_client = OllamaClient(
         settings.ollama_base_url,
         settings.model,
+        timeout_seconds=settings.ollama_timeout_seconds,
         keep_alive=settings.ollama_keep_alive,
     )
 

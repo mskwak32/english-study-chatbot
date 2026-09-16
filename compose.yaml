@@ -36,6 +36,7 @@ services:
       MODEL: ${MODEL:-gemma3:4b}
       OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-60}
       TIMEZONE: ${TIMEZONE:-Asia/Seoul}
       DATABASE_URL: sqlite:////data/chat.db
       INSTRUCTIONS_PATH: /instructions
