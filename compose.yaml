@@ -19,11 +19,8 @@ services:
       start_period: 10s
 
   agent:
-    # 프로젝트 루트의 Dockerfile로 Agent 이미지를 빌드.
-    build:
-      context: .
-
-    image: english-study-agent:local
+    # Pi에 docker load로 가져온 Agent 이미지를 배포 명령에서 지정.
+    image: ${AGENT_IMAGE:?Pi에서 로드한 Agent 이미지 태그가 필요합니다}
     restart: unless-stopped
 
     # Ollama 서버 health check가 통과한 뒤 Agent 시작
@@ -51,14 +48,6 @@ services:
       - type: bind
         source: ./data
         target: /data
-        bind:
-          create_host_path: false
-
-      # 런타임 지침은 컨테이너에서 절대 수정하지 못하게 함.
-      - type: bind
-        source: ./instructions
-        target: /instructions
-        read_only: true
         bind:
           create_host_path: false
 

@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
+
 from app.database import (
     Message,
     add_proficiency_test,

@@ -29,6 +29,7 @@ Raspberry Pi 5에서 Docker Compose로 실행하고 PC·휴대폰 브라우저�
 | 4. Ollama와 Python Agent | 완료 | 구조화 JSON Agent, 학습 데이터 저장, `keep_alive` 구현 |
 | 5. 반응형 Web UI | 완료 | 채팅, 정보 화면, 초기 프로필 생성, 키보드 전송 구현 |
 | 6. Docker Compose와 Raspberry Pi 배포 | 완료 | Agent·Ollama 분리, 영속 저장소, 최소 권한 Agent, 운영 문서화 |
+| 7. PC 기반 ARM64 이미지 배포 | 진행 중 | 개발 PC 이미지 빌드·Pi 직접 전송, Agent 업데이트·롤백 절차 |
 
 4단계의 Raspberry Pi 측정에서 `gemma3:4b` warm 요청은 첫 응답 0.52~0.53초, 전체 21.19~24.32초였고 최대 RSS는 4.20 GiB였다.
 
@@ -49,16 +50,15 @@ Raspberry Pi 5에서 Docker Compose로 실행하고 PC·휴대폰 브라우저�
 
 ## 다음 단계
 
-### 7단계 — 통합 검증과 운영 준비
+### 7단계 — PC 기반 ARM64 이미지 배포
 
-전체 사용자 흐름, 백업·복구, Ollama 장애 대응, 설치·업데이트·운영 문서와 CI/CD 배포를 완성한다.
+검증된 Agent 이미지를 개발 PC에서 ARM64로 빌드해 Pi에 직접 전송하고, Agent만 안전하게 교체·롤백하는 배포 절차를 구현한다.
 
-- 기본 브랜치 변경 또는 명시적 릴리스 태그를 계기로 Python·Web 테스트를 실행하고, 통과한 코드만 ARM64 Agent 이미지를 빌드한다.
-- 빌드한 이미지를 레지스트리에 immutable 버전 태그와 digest로 게시한다. `latest` 태그만으로 배포 대상을 식별하지 않는다.
-- Pi의 배포용 Compose 설정은 `build:`가 아닌 게시된 Agent 이미지를 참조한다. Pi에는 Compose 파일, 환경 파일, 런타임 지침, SQLite 데이터만 유지한다.
-- CI/CD는 Pi의 배포 절차를 실행해 새 이미지를 pull하고 Agent만 재생성한다. SQLite bind mount, 런타임 지침, Ollama named volume은 유지해야 한다.
-- 배포 뒤 Agent health check와 LAN API를 확인하고, 실패 시 직전 이미지 digest로 되돌릴 수 있어야 한다.
-- 레지스트리 인증 정보와 Pi 배포 권한은 CI 비밀값으로 관리하며 Git 저장소와 이미지에 포함하지 않는다.
+- 개발 PC에서 Python·Web 테스트를 통과한 코드만 ARM64 Agent 이미지로 빌드한다.
+- 이미지 archive를 SSH 기반 전송으로 Pi에 전달하고, Pi에서 `docker load`로 가져온다. Agent image에는 버전 고정 런타임 지침을 포함한다. SQLite DB·백업, 환경 파일, Ollama 모델은 전송하지 않는다.
+- Pi의 배포용 Compose 설정은 `build:`가 아닌 전달받은 Agent 이미지를 참조한다. SQLite bind mount와 Ollama named volume은 유지한다.
+- 배포 archive의 SHA-256, 이미지 태그, Git commit, Pi의 image ID를 기록하고, 실패 시 직전 Agent 이미지로 되돌릴 수 있어야 한다.
+- SSH 키와 Pi 접속 정보는 개발 PC에만 보관하며 Git 저장소·이미지·로그에 포함하지 않는다.
 
 ## MVP 이후 후보
 
@@ -68,3 +68,4 @@ Raspberry Pi 5에서 Docker Compose로 실행하고 PC·휴대폰 브라우저�
 - 외부 공개 접속 보안
 - 모델 자동 벤치마크와 학습 통계
 - 학습 진도 기록, 레벨 상승/하향에 대한 도구가 없음. 도구를 만들어야 함
+- GitHub Actions와 컨테이너 레지스트리를 이용한 이미지 게시·자동 배포

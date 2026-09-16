@@ -3,9 +3,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
+
 from app import main
 from app.database import add_message, get_chat
-from fastapi.testclient import TestClient
 
 
 @pytest.fixture

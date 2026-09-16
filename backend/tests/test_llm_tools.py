@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
+
 from app.agent.protocol import (
     ChangeLearningLevelToolCall,
     CompleteInitialAssessmentToolCall,
@@ -17,11 +18,11 @@ from app.database import (
     get_learning_profile,
     get_or_create_default_chat,
     initialize_database,
-    list_proficiency_tests,
     list_level_changes,
+    list_proficiency_tests,
     list_recent_study_records,
-    save_learning_profile,
     list_review_words,
+    save_learning_profile,
     start_initial_assessment,
 )
 from app.llm_tools import (

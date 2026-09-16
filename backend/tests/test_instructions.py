@@ -2,6 +2,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+
 from app.instructions import (
     AGENT_INSTRUCTIONS_FILENAME,
     INITIAL_ASSESSMENT_INSTRUCTIONS_FILENAME,

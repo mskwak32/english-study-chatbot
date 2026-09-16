@@ -2,6 +2,10 @@
 .venv/
 .env
 data/
+backups/
+.runtime-test/
+.deployment/
+artifacts/
 backend/tests/
 **/.pytest_cache/
 **/__pycache__/

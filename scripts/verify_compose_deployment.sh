@@ -4,7 +4,7 @@
 # 목적:
 # - 테스트 전용 SQLite DB가 일회성 Agent 컨테이너 재생성 뒤에도 유지되는지 확인
 # - 실제 data/chat.db에 테스트 데이터를 쓰지 않는지 확인
-# - 런타임 지침 mount가 읽기 전용인지 확인
+# - image에 포함된 런타임 지침이 읽기 전용인지 확인
 # - Agent health와 Ollama 모델 가용성을 확인
 #
 # 실행:
@@ -131,6 +131,9 @@ cd "$PROJECT_ROOT"
 command -v docker > /dev/null || fail "docker 명령을 찾을 수 없음"
 command -v curl > /dev/null || fail "curl 명령을 찾을 수 없음"
 
+readonly RUNNING_AGENT_CONTAINER_ID="$(docker compose ps -q agent)"
+[[ -n "$RUNNING_AGENT_CONTAINER_ID" ]] || fail "agent 컨테이너를 찾을 수 없음"
+export AGENT_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$RUNNING_AGENT_CONTAINER_ID")"
 docker compose config --quiet
 
 if [[ ! -d "$TEST_DIRECTORY" ]]; then
@@ -154,14 +157,16 @@ wait_for_healthy ollama
 wait_for_healthy agent
 
 readonly AGENT_CONTAINER_ID="$(docker compose ps -q agent)"
-readonly INSTRUCTIONS_READ_WRITE="$(
-    docker inspect \
-        --format '{{range .Mounts}}{{if eq .Destination "/instructions"}}{{.RW}}{{end}}{{end}}' \
-        "$AGENT_CONTAINER_ID"
-)"
+docker compose exec -T agent \
+    python -c '
+from pathlib import Path
 
-[[ "$INSTRUCTIONS_READ_WRITE" == "false" ]] || fail \
-    "/instructions mount가 읽기 전용이 아님"
+instructions_path = Path("/instructions")
+if not instructions_path.is_dir() or not any(instructions_path.iterdir()):
+    raise SystemExit("image에 런타임 지침이 없습니다.")
+
+print("image 런타임 지침 확인")
+'
 
 docker compose exec -T agent \
     python -c '
@@ -251,7 +256,7 @@ Path("/instructions/.deployment-write-test").unlink(missing_ok=True)
     fail "/instructions에 쓰기가 허용되었습니다."
 fi
 
-printf '%s\n' '런타임 지침 읽기 전용 확인'
+printf '%s\n' 'image 런타임 지침 읽기 전용 확인'
 
 readonly MODEL_NAME="$(model_name)"
 docker compose exec -T ollama ollama show "$MODEL_NAME" > /dev/null

@@ -3,6 +3,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
+
 from app.database import (
     LearningProfileError,
     ReviewWordError,

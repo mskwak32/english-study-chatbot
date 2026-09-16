@@ -1,6 +1,7 @@
 import pytest
-from app.config import PROJECT_ROOT, Settings
 from pydantic import ValidationError
+
+from app.config import PROJECT_ROOT, Settings
 
 
 def test_settings_use_defaults() -> None:
