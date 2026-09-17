@@ -1,0 +1,61 @@
+name: english-study-ai
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "ps"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  agent:
+    # AGENT_TAG 기본값으로 Ollama만 먼저 준비할 때도 Compose 해석 가능
+    image: english-study-agent:${AGENT_TAG:-bootstrap}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+        restart: true
+    ports:
+      - "8100:8000"
+    environment:
+      MODEL: ${MODEL:-gemma3:4b}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-60}
+      TIMEZONE: ${TIMEZONE:-Asia/Seoul}
+      DATABASE_URL: sqlite:////data/chat.db
+      INSTRUCTIONS_PATH: /instructions
+    read_only: true
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data
+        bind:
+          create_host_path: false
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 67108864
+          mode: 1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+volumes:
+  ollama-models:
