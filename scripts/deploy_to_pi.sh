@@ -210,12 +210,14 @@ fi
 running_agent_id="$(AGENT_TAG=bootstrap docker compose ps -q agent)"
 if [[ -n "$running_agent_id" ]]; then
     # 상태 파일보다 실제 실행 중인 컨테이너의 태그를 우선함.
-    # 수동 Compose 명령을 실행했어도 다음 배포의 이전 태그가 실제 실행 상태와 맞게 함.
+    # Git SHA가 아닌 태그도 새 배포를 막지 않되, 롤백 대상으로는 기록하지 않음.
     running_image="$(docker inspect --format '{{.Config.Image}}' "$running_agent_id")"
     if [[ "$running_image" =~ ^english-study-agent:([0-9a-f]{12})$ ]]; then
         current_tag="${BASH_REMATCH[1]}"
     else
-        fail "실행 중인 Agent image 형식이 올바르지 않음: $running_image"
+        current_tag='none'
+        previous_tag='none'
+        printf '%s\n' "Git SHA가 아닌 실행 중 Agent image는 롤백 기록에 포함하지 않음: $running_image"
     fi
 fi
 

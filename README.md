@@ -135,7 +135,7 @@ curl -fsS http://127.0.0.1:8100/health
 docker compose start ollama agent
 ```
 
-수동 빌드에 사용한 `manual-*` 태그는 개발 PC 배포 도구의 Git 기반 롤백 기록에 포함되지 않습니다.
+수동 빌드에 사용한 `manual-*` 태그와 그 밖의 Git SHA가 아닌 Agent 태그는 개발 PC 배포 도구의 롤백 기록에 포함되지 않습니다. 이후 개발 PC 배포 도구를 실행하면 해당 Agent는 새 Git SHA 이미지로 교체되고, 이전 태그는 `none`으로 기록됩니다.
 
 ## 개발 PC에서 Pi로 배포
 

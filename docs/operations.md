@@ -118,7 +118,7 @@ export AGENT_TAG="manual-$(date +%Y%m%d-%H%M%S)"
 AGENT_TAG="$AGENT_TAG" docker compose up -d --build
 ```
 
-이 명령은 현재 Pi 프로젝트의 소스로 Agent 이미지를 빌드하고 Ollama와 Agent 컨테이너를 기동합니다. 수동 태그는 개발 PC의 배포 도구가 기록하는 Git 커밋 태그가 아니므로, 이 방법으로 실행한 이미지는 `rollback_to_pi.sh`의 롤백 대상으로 기록되지 않습니다.
+이 명령은 현재 Pi 프로젝트의 소스로 Agent 이미지를 빌드하고 Ollama와 Agent 컨테이너를 기동합니다. 수동 태그와 그 밖의 Git SHA가 아닌 Agent 태그는 개발 PC 배포 도구의 롤백 대상이 아닙니다. 이후 개발 PC 배포 도구를 실행하면 현재 Agent 태그와 관계없이 새 Git SHA 이미지로 Agent만 교체하고, 새 배포의 이전 태그는 `none`으로 기록합니다.
 
 이미 만들어 둔 컨테이너가 중단되었을 뿐이고 이미지를 새로 빌드할 필요가 없다면 Pi에서 다음 명령으로 같은 컨테이너를 다시 시작합니다.
 
