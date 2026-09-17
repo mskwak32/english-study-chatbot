@@ -50,9 +50,9 @@ wait_for_agent_healthy() {
     # 롤백한 컨테이너가 healthy가 될 때까지 최대 60초 기다림
     for _ in {1..30}; do
         # 이전 태그로 생성된 Agent 컨테이너의 healthcheck 상태를 읽음
-        container_id="$(AGENT_TAG="$previous_tag" docker compose ps -q agent)"
+        container_id="$(AGENT_TAG="$previous_tag" docker compose ps -q agent < /dev/null)"
         [[ -n "$container_id" ]] || return 1
-        health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id")"
+        health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" < /dev/null)"
         [[ "$health_status" == 'healthy' ]] && return 0
         sleep 2
     done
@@ -72,18 +72,18 @@ previous_tag="$(awk -F= '$1 == "previous_tag" { print $2 }' "$state_path")"
 [[ "$current_tag" =~ ^[0-9a-f]{12}$ ]] || fail '현재 Agent 태그 형식이 올바르지 않음'
 [[ "$previous_tag" =~ ^[0-9a-f]{12}$ ]] || fail '롤백할 직전 Agent image가 없음'
 # 실제 이미지가 남아 있는지 먼저 확인해, Agent를 중단시킨 뒤에 실패하지 않게 함
-docker image inspect "english-study-agent:$previous_tag" > /dev/null || \
+docker image inspect "english-study-agent:$previous_tag" < /dev/null > /dev/null || \
     fail "직전 Agent image를 찾을 수 없음: $previous_tag"
 
-ollama_container_id="$(AGENT_TAG=bootstrap docker compose ps -q ollama)"
+ollama_container_id="$(AGENT_TAG=bootstrap docker compose ps -q ollama < /dev/null)"
 [[ -n "$ollama_container_id" ]] || fail '실행 중인 Ollama 컨테이너를 찾을 수 없음'
 
 # --no-deps로 Ollama와 모델 volume을 건드리지 않음.
 # 이미지 태그만 달라지므로 SQLite data mount와 .env도 같은 위치를 계속 사용함.
-AGENT_TAG="$previous_tag" docker compose up -d --no-deps agent
+AGENT_TAG="$previous_tag" docker compose up -d --no-deps agent < /dev/null
 wait_for_agent_healthy || fail '롤백한 Agent health 확인 실패'
 
-[[ "$(AGENT_TAG="$previous_tag" docker compose ps -q ollama)" == "$ollama_container_id" ]] || fail \
+[[ "$(AGENT_TAG="$previous_tag" docker compose ps -q ollama < /dev/null)" == "$ollama_container_id" ]] || fail \
     'Agent 롤백 중 Ollama 컨테이너가 변경됨'
 
 temporary_path="$(mktemp "$project_directory/.deployment/agent-tags.XXXXXX")"

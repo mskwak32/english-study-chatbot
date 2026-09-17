@@ -135,9 +135,9 @@ wait_for_agent_healthy() {
     # healthcheck가 healthy가 될 때까지 최대 60초 기다림
     for _ in {1..30}; do
         # -q는 컨테이너 ID만 출력한다. 그 ID로 Docker healthcheck 상태를 읽음
-        container_id="$(AGENT_TAG="$agent_tag" docker compose ps -q agent)"
+        container_id="$(AGENT_TAG="$agent_tag" docker compose ps -q agent < /dev/null)"
         [[ -n "$container_id" ]] || return 1
-        health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id")"
+        health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" < /dev/null)"
         [[ "$health_status" == 'healthy' ]] && return 0
         sleep 2 # healthcheck interval보다 짧게 반복 확인
     done
@@ -151,7 +151,7 @@ wait_for_ollama_healthy() {
     # Agent를 빌드하기 전에 Ollama 서버가 요청을 받을 준비를 확인.
     # 모델 파일이 없더라도 컨테이너 자체가 healthy일 수 있어 뒤에서 show를 추가로 실행함.
     for _ in {1..30}; do
-        health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$ollama_container_id")"
+        health_status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$ollama_container_id" < /dev/null)"
         [[ "$health_status" == 'healthy' ]] && return 0
         sleep 2
     done
@@ -183,8 +183,9 @@ fi
 
 # Agent 이미지가 아직 없어도 Ollama만 먼저 시작할 수 있도록 임시 태그 사용.
 # compose.yaml의 agent image 변수 해석만 위한 값이며 bootstrap 이미지를 빌드하거나 실행하지 않음.
-AGENT_TAG=bootstrap docker compose up -d ollama
-ollama_container_id="$(AGENT_TAG=bootstrap docker compose ps -q ollama)"
+# 원격 Bash가 SSH 표준입력에서 읽는 나머지 스크립트를 Docker가 소비하지 못하게 함.
+AGENT_TAG=bootstrap docker compose up -d ollama < /dev/null
+ollama_container_id="$(AGENT_TAG=bootstrap docker compose ps -q ollama < /dev/null)"
 [[ -n "$ollama_container_id" ]] || fail '실행 중인 Ollama 컨테이너를 찾을 수 없음'
 wait_for_ollama_healthy || fail 'Ollama health 확인 실패'
 
@@ -193,7 +194,7 @@ wait_for_ollama_healthy || fail 'Ollama health 확인 실패'
 model="$(awk -F= '$1 == "MODEL" { value = substr($0, length($1) + 2); sub(/\r$/, "", value); print value; exit }' .env)"
 model="${model:-gemma3:4b}"
 [[ "$model" =~ ^[A-Za-z0-9._:/@-]+$ ]] || fail 'MODEL 값 형식이 올바르지 않음'
-docker compose exec -T ollama ollama show "$model" > /dev/null || fail \
+docker compose exec -T ollama ollama show "$model" < /dev/null > /dev/null || fail \
     "Ollama 모델이 없음: $model. Pi에서 docker compose exec ollama ollama pull $model 실행 후 배포를 다시 실행해야 함"
 
 current_tag='none'
@@ -207,11 +208,11 @@ fi
 [[ "$current_tag" == 'none' || "$current_tag" =~ ^[0-9a-f]{12}$ ]] || fail '현재 Agent 태그 기록 형식이 올바르지 않음'
 [[ "$previous_tag" == 'none' || "$previous_tag" =~ ^[0-9a-f]{12}$ ]] || fail '직전 Agent 태그 기록 형식이 올바르지 않음'
 
-running_agent_id="$(AGENT_TAG=bootstrap docker compose ps -q agent)"
+running_agent_id="$(AGENT_TAG=bootstrap docker compose ps -q agent < /dev/null)"
 if [[ -n "$running_agent_id" ]]; then
     # 상태 파일보다 실제 실행 중인 컨테이너의 태그를 우선함.
     # Git SHA가 아닌 태그도 새 배포를 막지 않되, 롤백 대상으로는 기록하지 않음.
-    running_image="$(docker inspect --format '{{.Config.Image}}' "$running_agent_id")"
+    running_image="$(docker inspect --format '{{.Config.Image}}' "$running_agent_id" < /dev/null)"
     if [[ "$running_image" =~ ^english-study-agent:([0-9a-f]{12})$ ]]; then
         current_tag="${BASH_REMATCH[1]}"
     else
@@ -224,13 +225,13 @@ fi
 printf '%s\n' "Pi에서 Agent image 빌드: $agent_tag"
 # Dockerfile이 현재 rsync된 코드와 instructions를 이미지에 복사.
 # 이 명령은 Pi CPU에서 실행되며, 같은 의존성 layer는 Docker cache를 재사용할 수 있음.
-AGENT_TAG="$agent_tag" docker compose build agent
+AGENT_TAG="$agent_tag" docker compose build agent < /dev/null
 # --no-deps는 Ollama를 다시 만들지 않고 Agent만 교체.
 # SQLite bind mount와 Ollama named volume도 Compose 정의를 변경하지 않아 그대로 유지됨.
-AGENT_TAG="$agent_tag" docker compose up -d --no-deps agent
+AGENT_TAG="$agent_tag" docker compose up -d --no-deps agent < /dev/null
 wait_for_agent_healthy || fail '새 Agent health 확인 실패. 롤백은 rollback_to_pi.sh를 명시적으로 실행해야 함'
 
-[[ "$(AGENT_TAG="$agent_tag" docker compose ps -q ollama)" == "$ollama_container_id" ]] || fail \
+[[ "$(AGENT_TAG="$agent_tag" docker compose ps -q ollama < /dev/null)" == "$ollama_container_id" ]] || fail \
     'Agent 업데이트 중 Ollama 컨테이너가 변경됨'
 
 if [[ "$current_tag" != "$agent_tag" ]]; then
