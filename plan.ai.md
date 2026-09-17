@@ -56,5 +56,4 @@ Raspberry Pi 5에서 Docker Compose로 Ollama와 Python Agent를 실행하고 PC
 - 음성 입력·출력
 - 로그인과 다중 사용자 지원
 - 외부 공개 접속 보안
-- 모델 자동 벤치마크와 학습 통계
 - GitHub Actions를 이용한 테스트 자동화와 컨테이너 레지스트리 이미지 배포

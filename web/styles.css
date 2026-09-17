@@ -42,7 +42,7 @@ textarea {
   font-size: 1.25rem;
 }
 
-.learning-info-link,
+.topbar-icon-link,
 .topbar-return-link {
   display: inline-flex;
   align-items: center;
@@ -53,11 +53,16 @@ textarea {
   text-decoration: none;
 }
 
-.learning-info-link {
+.topbar-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.topbar-icon-link {
   width: 2.75rem;
 }
 
-.learning-info-link svg {
+.topbar-icon-link svg {
   width: 1.5rem;
   height: 1.5rem;
   fill: none;
@@ -71,7 +76,7 @@ textarea {
   padding: 0.5rem 0.75rem;
 }
 
-.learning-info-link:hover,
+.topbar-icon-link:hover,
 .topbar-return-link:hover {
   background: rgb(255 255 255 / 15%);
 }
@@ -350,6 +355,59 @@ a:focus-visible {
   margin: 0 auto;
 }
 
+.settings-page {
+  width: min(100%, 72rem);
+  min-height: calc(100vh - 4rem);
+  min-height: calc(100dvh - 4rem);
+  padding: 2rem;
+  margin: 0 auto;
+}
+
+.settings-content h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+}
+
+.settings-description {
+  margin: 0 0 1.5rem;
+  color: #65758b;
+  line-height: 1.6;
+}
+
+.settings-card-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.status-value {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  font-weight: 700;
+}
+
+.status-indicator {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: #65758b;
+}
+
+.status-value.is-healthy {
+  color: #237345;
+}
+
+.status-value.is-healthy .status-indicator {
+  background: #237345;
+}
+
+.status-value.is-unhealthy {
+  color: #a12626;
+}
+
+.status-value.is-unhealthy .status-indicator {
+  background: #a12626;
+}
+
 .learning-navigation {
   display: flex;
   flex-wrap: wrap;
@@ -492,6 +550,10 @@ a:focus-visible {
     padding: 1rem;
   }
 
+  .settings-page {
+    padding: 1rem;
+  }
+
   .learning-navigation {
     margin-bottom: 1.5rem;
   }
@@ -503,6 +565,10 @@ a:focus-visible {
 
   .learning-card {
     padding: 1rem;
+  }
+
+  .settings-card-list {
+    grid-template-columns: 1fr;
   }
 
   .learning-detail-list {

@@ -9,6 +9,7 @@ import {
   loadInitialState,
   loadLearningProfile,
   loadReviewWords,
+  loadSettingsStatus,
   loadStudyRecords,
   sendChatMessage,
   startProfileSetupChat,
@@ -204,4 +205,26 @@ test("학습 정보 API는 same-origin GET 경로를 사용한다", async () => 
       options: { headers: { Accept: "application/json" } },
     },
   ]);
+});
+
+test("설정 상태 API는 same-origin GET 경로를 사용한다", async () => {
+  let request;
+  const settingsStatus = { model: { name: "Gemma 3 4B" } };
+  const fakeFetch = async (path, options) => {
+    request = { path, options };
+
+    return {
+      ok: true,
+      status: 200,
+      json: async () => settingsStatus,
+    };
+  };
+
+  const result = await loadSettingsStatus(fakeFetch);
+
+  assert.deepEqual(request, {
+    path: "/settings/status",
+    options: { headers: { Accept: "application/json" } },
+  });
+  assert.deepEqual(result, settingsStatus);
 });

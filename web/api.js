@@ -147,6 +147,16 @@ export function loadReviewWords(fetchFunction = globalThis.fetch) {
 }
 
 /**
+ * 현재 모델, Ollama, Raspberry Pi, 학습 데이터의 읽기 전용 상태를 불러옵니다.
+ *
+ * @param {typeof fetch} [fetchFunction] 요청에 사용할 fetch 함수입니다.
+ * @returns {Promise<object>} 서버가 계산한 설정 상태입니다.
+ */
+export function loadSettingsStatus(fetchFunction = globalThis.fetch) {
+  return requestJson(fetchFunction, "/settings/status");
+}
+
+/**
  * 오늘의 기본 학습과 화면에 필요한 초기 목록·메시지를 함께 불러옵니다.
  * 오늘의 기본 학습이 아직 없으면 이를 만들지 않고 빈 활성 채팅 상태를 반환합니다.
  *
